@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Aditya Security Guard — Sign In</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div class="login-shell">
+  <div class="login-hero">
+    <div class="brand">
+      <div class="brand-mark">AS</div>
+      <span style="font-family:'Big Shoulders Display',sans-serif; font-weight:700; font-size:15px;">ADITYA SECURITY GUARD</span>
+    </div>
+
+    <div>
+      <h1 class="headline">Every gate.<br>Every hour.<br><em>Logged.</em></h1>
+      <p class="sub">Duty rosters, QR check-ins and site photo evidence for every guard, on every shift — from 6 in the evening to 6 the next morning.</p>
+    </div>
+
+    <div class="hero-stats">
+      <div class="stat"><b>4</b><span>Active guards</span></div>
+      <div class="stat"><b>4</b><span>Duty sites</span></div>
+      <div class="stat"><b>12hr</b><span>Night shift window</span></div>
+    </div>
+  </div>
+
+  <div class="login-panel">
+    <div class="login-card">
+      <h2>Sign in</h2>
+      <p class="lead">Enter your roll number to continue.</p>
+
+      <form id="loginForm">
+        <div class="field">
+          <label for="rollNo">Roll No</label>
+          <input id="rollNo" type="text" autocomplete="username" placeholder="e.g. 2758" />
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" />
+        </div>
+        <div class="error-text" id="errorText"></div>
+        <button type="submit" class="btn btn-primary">Log in</button>
+      </form>
+
+      <div class="demo-box">
+        <b>No admin account yet?</b><br>
+        Create the first one directly in MongoDB (mongosh) — see the "Creating the first admin user" section in README.md. After that, use the admin's "Add Security" page to create every other login.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/api.js"></script>
+<script>
+  document.getElementById('loginForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const rollNo = document.getElementById('rollNo').value.trim();
+    const password = document.getElementById('password').value.trim();
+    const errorText = document.getElementById('errorText');
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    errorText.textContent = '';
+
+    if (!rollNo || !password) {
+      errorText.textContent = 'Please fill out both fields.';
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Signing in...';
+
+    try {
+      const user = await loginViaApi(rollNo, password);
+      setCurrentUser(user);
+      window.location.href = user.role === 'admin' ? 'admin.html' : 'user.html';
+    } catch (err) {
+      errorText.textContent = err.message || 'Invalid roll number or password.';
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Log in';
+    }
+  });
+</script>
+</body>
+</html>

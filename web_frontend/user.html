@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Guard — Aditya Security Guard</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand guard-brand">
+      <div class="avatar avatar-lg" id="sidebarAvatar"></div>
+      <div class="guard-brand-text">
+        <span class="guard-name" id="sidebarName"></span>
+        <small id="sidebarDesignation"></small>
+        <small id="sidebarEmpId"></small>
+        <small id="sidebarMobile"></small>
+      </div>
+    </div>
+
+    <div class="nav-group-label">Duty</div>
+    <div class="nav-link active" data-section="home">Home</div>
+    <div class="nav-link" data-section="images">Images</div>
+    <div class="nav-link" data-section="logs">Logs/Data</div>
+
+    <div class="nav-group-label">Account</div>
+    <div class="nav-link" data-section="contact">Contact Us</div>
+
+    <div class="sidebar-footer">
+      <div class="nav-link" id="logoutBtn" style="color:#e2574c;">Logout</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <button class="menu-toggle" id="menuToggle">☰</button>
+        <h1 id="pageTitle">Home</h1>
+      </div>
+      <div class="who">
+        <span id="whoName"></span>
+        <div class="avatar" id="avatarInitial"></div>
+      </div>
+    </div>
+    <div class="content" id="content"></div>
+  </main>
+</div>
+
+<div class="modal-overlay" id="modalOverlay" style="display:none;">
+  <div class="modal-box" id="modalBox"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="js/data.js"></script>
+<script src="js/api.js"></script>
+<script src="js/user.js"></script>
+</body>
+</html>
