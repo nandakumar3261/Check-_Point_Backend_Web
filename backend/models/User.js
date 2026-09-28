@@ -3,7 +3,7 @@ const { Schema } = mongoose;
 
 /**
  * Field names match your actual data source:
- *   roll_no, password (bcrypt hash), first_name, designation, mobile, role
+ *   roll_no, password (bcrypt hash), first_name, gender, designation, mobile, role
  *
  * "role" distinguishes admin accounts ("admin") from guard accounts
  * ("security") - both live in this one collection, matching how the
@@ -16,6 +16,9 @@ const UserSchema = new Schema(
     roll_no: { type: String, required: true, unique: true, trim: true },
     password: { type: String, required: true }, // bcrypt hash
     first_name: { type: String, required: true },
+    // 'Male' | 'Female' | 'Other', or '' for accounts created before this
+    // field existed (kept optional so those older documents stay valid).
+    gender: { type: String, enum: ['Male', 'Female', 'Other', ''], default: '' },
     designation: { type: String, default: 'Security Guard' },
     mobile: { type: String, required: true },
     role: { type: String, enum: ['admin', 'security'], required: true },

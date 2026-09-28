@@ -3,7 +3,7 @@
  * Handles quoted fields (so commas inside a name/designation are safe).
  */
 
-const CSV_HEADERS = ['roll_no', 'password', 'first_name', 'designation', 'mobile', 'role'];
+const CSV_HEADERS = ['roll_no', 'password', 'first_name', 'gender', 'designation', 'mobile', 'role'];
 
 function parseCsvLine(line) {
   const fields = [];
@@ -58,7 +58,7 @@ function csvEscape(value) {
 }
 
 function downloadCsvTemplate() {
-  const exampleRow = ['1001', 'Pass@123', 'John Doe', 'Security Guard', '9000000000', 'security'];
+  const exampleRow = ['1001', 'Pass@123', 'John Doe', 'Male', 'Security Guard', '9000000000', 'security'];
   const csv = [CSV_HEADERS.join(','), exampleRow.map(csvEscape).join(',')].join('\n');
 
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });

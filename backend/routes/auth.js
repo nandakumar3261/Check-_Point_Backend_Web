@@ -30,6 +30,7 @@ router.post('/login', async (req, res) => {
     res.json({
       roll_no: user.roll_no,
       first_name: user.first_name,
+      gender: user.gender || '',
       designation: user.designation,
       mobile: user.mobile,
       role: user.role,

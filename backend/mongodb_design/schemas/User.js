@@ -11,6 +11,7 @@ const UserSchema = new Schema(
     passwordHash: { type: String, required: true }, // store bcrypt hash, never plaintext
     role: { type: String, enum: ['admin', 'guard'], required: true },
     name: { type: String, required: true },
+    gender: { type: String, enum: ['Male', 'Female', 'Other', ''], default: '' },
     designation: { type: String, default: 'Security Guard' },
     mobile: { type: String, required: true },
   },

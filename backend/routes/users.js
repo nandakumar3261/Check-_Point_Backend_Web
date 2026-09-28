@@ -8,6 +8,18 @@ const User = require('../models/User');
 const router = express.Router();
 
 const ALLOWED_ROLES = ['admin', 'security'];
+const ALLOWED_GENDERS = ['Male', 'Female', 'Other'];
+
+// Normalizes a gender value from the form / CSV ("male", " FEMALE ", ...) to
+// the stored form ("Male", "Female", "Other"). Blank -> '' (gender is
+// optional at the API level so older CSVs/clients keep working); anything
+// else that isn't one of the three values -> null, meaning "invalid".
+function normalizeGender(value) {
+  const v = String(value ?? '').trim();
+  if (!v) return '';
+  const match = ALLOWED_GENDERS.find(g => g.toLowerCase() === v.toLowerCase());
+  return match || null;
+}
 
 // GET /api/users?role=&search=&page=1&limit=10
 //   role   - optional, 'admin' or 'security'
@@ -61,6 +73,7 @@ router.get('/by-roll/:roll_no', async (req, res) => {
     res.json({
       roll_no: user.roll_no,
       first_name: user.first_name,
+      gender: user.gender || '',
       designation: user.designation,
       mobile: user.mobile,
       role: user.role,
@@ -160,17 +173,21 @@ router.post('/by-roll/:roll_no/profile-pic', (req, res) => {
   });
 });
 
-// POST /api/users  { roll_no, password, first_name, designation, mobile, role }
+// POST /api/users  { roll_no, password, first_name, gender, designation, mobile, role }
 // Used by the admin "Add Security" form (single account).
 router.post('/', async (req, res) => {
   try {
-    const { roll_no, password, first_name, designation, mobile, role } = req.body;
+    const { roll_no, password, first_name, gender, designation, mobile, role } = req.body;
 
     if (!roll_no || !password || !first_name || !mobile || !role) {
       return res.status(400).json({ error: 'roll_no, password, first_name, mobile and role are all required.' });
     }
     if (!ALLOWED_ROLES.includes(role)) {
       return res.status(400).json({ error: "role must be 'admin' or 'security'." });
+    }
+    const normalizedGender = normalizeGender(gender);
+    if (normalizedGender === null) {
+      return res.status(400).json({ error: "gender must be 'Male', 'Female' or 'Other'." });
     }
 
     const existing = await User.findOne({ roll_no: String(roll_no).trim() });
@@ -183,6 +200,7 @@ router.post('/', async (req, res) => {
       roll_no: String(roll_no).trim(),
       password: passwordHash,
       first_name: first_name.trim(),
+      gender: normalizedGender,
       designation: designation?.trim() || 'Security Guard',
       mobile: mobile.trim(),
       role,
@@ -191,6 +209,7 @@ router.post('/', async (req, res) => {
     res.status(201).json({
       roll_no: user.roll_no,
       first_name: user.first_name,
+      gender: user.gender,
       designation: user.designation,
       mobile: user.mobile,
       role: user.role,
@@ -201,7 +220,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-// POST /api/users/bulk  { users: [ { roll_no, password, first_name, designation, mobile, role }, ... ] }
+// POST /api/users/bulk  { users: [ { roll_no, password, first_name, gender, designation, mobile, role }, ... ] }
 // Used by the admin "Add Security" CSV bulk upload.
 // Each row is validated and inserted independently - one bad row does not
 // stop the rest. Returns a per-row summary so the frontend can show exactly
@@ -221,7 +240,7 @@ router.post('/bulk', async (req, res) => {
 
     for (let i = 0; i < rows.length; i++) {
       const rowNum = i + 2; // +2 so it matches the CSV line number (1 = header row)
-      const { roll_no, password, first_name, designation, mobile, role } = rows[i] || {};
+      const { roll_no, password, first_name, gender, designation, mobile, role } = rows[i] || {};
 
       if (!roll_no || !password || !first_name || !mobile || !role) {
         results.push({ row: rowNum, roll_no: roll_no || '', status: 'skipped', reason: 'Missing required field(s).' });
@@ -229,6 +248,11 @@ router.post('/bulk', async (req, res) => {
       }
       if (!ALLOWED_ROLES.includes(String(role).trim())) {
         results.push({ row: rowNum, roll_no, status: 'skipped', reason: "role must be 'admin' or 'security'." });
+        continue;
+      }
+      const normalizedGender = normalizeGender(gender);
+      if (normalizedGender === null) {
+        results.push({ row: rowNum, roll_no, status: 'skipped', reason: "gender must be 'Male', 'Female' or 'Other' (or left blank)." });
         continue;
       }
 
@@ -244,6 +268,7 @@ router.post('/bulk', async (req, res) => {
           roll_no: String(roll_no).trim(),
           password: passwordHash,
           first_name: String(first_name).trim(),
+          gender: normalizedGender,
           designation: designation ? String(designation).trim() : 'Security Guard',
           mobile: String(mobile).trim(),
           role: String(role).trim(),
@@ -266,18 +291,22 @@ router.post('/bulk', async (req, res) => {
   }
 });
 
-// PUT /api/users/:id  { first_name, designation, mobile, role, password? }
+// PUT /api/users/:id  { first_name, gender?, designation, mobile, role, password? }
 // Edits an existing account. roll_no is not editable here (it's the login
 // key). password is optional - leave it out to keep the current one.
 router.put('/:id', async (req, res) => {
   try {
-    const { first_name, designation, mobile, role, password } = req.body;
+    const { first_name, gender, designation, mobile, role, password } = req.body;
 
     if (!first_name || !mobile || !role) {
       return res.status(400).json({ error: 'first_name, mobile and role are required.' });
     }
     if (!ALLOWED_ROLES.includes(role)) {
       return res.status(400).json({ error: "role must be 'admin' or 'security'." });
+    }
+    const normalizedGender = normalizeGender(gender);
+    if (normalizedGender === null) {
+      return res.status(400).json({ error: "gender must be 'Male', 'Female' or 'Other'." });
     }
 
     const update = {
@@ -286,6 +315,9 @@ router.put('/:id', async (req, res) => {
       mobile: mobile.trim(),
       role,
     };
+    // Only touch gender when the client actually sent it, so an older client
+    // (or the mobile app) editing other fields can't wipe it.
+    if (gender !== undefined) update.gender = normalizedGender;
     if (password && password.trim()) {
       update.password = await bcrypt.hash(password.trim(), 10);
     }

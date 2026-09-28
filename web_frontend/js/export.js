@@ -110,7 +110,7 @@ function loadSquareImageAsDataUrl(url, size = 128) {
  * pre-converted to a data URL first.
  *
  * @param {Array<Object>} users  User docs from GET /api/users (must include
- *   _id, first_name, roll_no, role, mobile, designation, blocked, createdAt,
+ *   _id, first_name, roll_no, role, gender, mobile, designation, blocked, createdAt,
  *   profile_pic).
  * @param {Object} opts
  * @param {string} opts.filename
@@ -137,10 +137,14 @@ async function exportSecurityDataToPdf(users, { filename, title = 'Security Info
 
   const body = users.map((u, i) => [
     String(i + 1),
-    '', // photo is drawn manually in didDrawCell below
+    // Photo is drawn manually in didDrawCell below. The user's index rides
+    // along on the cell itself so didDrawCell never has to trust
+    // data.row.index to find the right person.
+    { content: '', userIndex: i },
     u.first_name,
     u.roll_no,
     u.role,
+    u.gender || '-',
     u.mobile,
     u.designation,
     u.blocked ? 'Blocked' : 'Active',
@@ -156,15 +160,17 @@ async function exportSecurityDataToPdf(users, { filename, title = 'Security Info
   doc.autoTable({
     startY: 26,
     theme: 'grid',
-    head: [['#', 'Photo', 'Name', 'Roll No', 'Role', 'Mobile', 'Designation', 'Status', 'Added On']],
+    head: [['#', 'Photo', 'Name', 'Roll No', 'Role', 'Gender', 'Mobile', 'Designation', 'Status', 'Added On']],
     body,
     styles: { fontSize: 8, lineWidth: 0.1, minCellHeight: ROW_HEIGHT, valign: 'middle' },
     headStyles: { fillColor: [18, 33, 58] },
     columnStyles: { [PHOTO_COLUMN]: { cellWidth: ROW_HEIGHT } },
     didDrawCell: (data) => {
       if (data.section !== 'body' || data.column.index !== PHOTO_COLUMN) return;
-      const u = users[data.row.index];
-      const dataUrl = photos[data.row.index];
+      const userIndex = data.cell.raw && data.cell.raw.userIndex;
+      const u = users[userIndex];
+      if (!u) return; // nothing sensible to draw - skip rather than throw
+      const dataUrl = photos[userIndex];
       const { x, y, width, height } = data.cell;
       const size = Math.min(width, height) - 3;
       const px = x + (width - size) / 2;

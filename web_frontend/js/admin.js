@@ -220,7 +220,16 @@ const renderers = {
                 </select>
               </div>
               <div class="field"><label>Mobile</label><input required name="mobile" /></div>
-              <div class="field"><label>Designation</label><input name="designation" placeholder="Security Guard" /></div>
+              <div class="field">
+                <label>Gender</label>
+                <select name="gender" required>
+                  <option value="" selected disabled>Select gender</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div class="field" style="grid-column: 1 / -1;"><label>Designation</label><input name="designation" placeholder="Security Guard" /></div>
               <div class="field" style="grid-column: 1 / -1;">
                 <label>Profile Pic <span style="color:var(--ink-500); font-weight:400;">(optional)</span></label>
                 <div style="display:flex; align-items:center; gap:12px;">
@@ -245,8 +254,9 @@ const renderers = {
       <div class="card">
         <div class="card-title">Bulk upload (CSV)</div>
         <p style="color:var(--ink-500); font-size:12.5px; margin-bottom:4px;">
-          Columns: <code>roll_no, password, first_name, designation, mobile, role</code> — role must be
-          <code>admin</code> or <code>security</code>. First row must be the header row.
+          Columns: <code>roll_no, password, first_name, gender, designation, mobile, role</code> — role must be
+          <code>admin</code> or <code>security</code>; gender must be <code>Male</code>, <code>Female</code> or
+          <code>Other</code> (may be left blank). First row must be the header row.
         </p>
         <div class="bulk-upload-box">
           <div class="row">
@@ -470,6 +480,7 @@ const renderers = {
       <p style="color:var(--ink-500); font-size:11.5px; margin-bottom:18px;">JPG or PNG only, max 2 MB.</p>
       <table style="text-align:left;">
         <tr><td style="color:var(--ink-500);">Name</td><td>${user.first_name}</td></tr>
+        <tr><td style="color:var(--ink-500);">Gender</td><td>${escapeHtml(user.gender || '—')}</td></tr>
         <tr><td style="color:var(--ink-500);">Designation</td><td>${user.designation}</td></tr>
         <tr><td style="color:var(--ink-500);">Roll No</td><td>${user.roll_no}</td></tr>
         <tr><td style="color:var(--ink-500);">Mobile</td><td>${user.mobile}</td></tr>
@@ -1096,6 +1107,7 @@ function attachHandlers(section) {
         password: f.get('password'),
         role: f.get('role'),
         mobile: f.get('mobile'),
+        gender: f.get('gender'),
         designation: f.get('designation') || 'Security Guard',
       };
       const submitBtn = e.target.querySelector('button[type="submit"]');
@@ -1122,7 +1134,7 @@ function attachHandlers(section) {
             <div class="avatar" style="width:32px; height:32px; font-size:13px; flex-shrink:0;">${g.profile_pic ? `<img src="${escapeHtml(g.profile_pic)}" alt="${escapeHtml(g.first_name)}">` : escapeHtml(g.first_name.charAt(0))}</div>
             <div>
               <b>${escapeHtml(g.first_name)}</b> <span class="badge badge-amber">${g.role}</span><br>
-              <span style="color:var(--ink-500);">${escapeHtml(g.roll_no)} • ${escapeHtml(g.mobile)} • ${escapeHtml(g.designation)}</span>
+              <span style="color:var(--ink-500);">${escapeHtml(g.roll_no)} • ${escapeHtml(g.mobile)} • ${escapeHtml(g.gender || '—')} • ${escapeHtml(g.designation)}</span>
             </div>
           </div>`).join('');
         e.target.reset();
@@ -1198,7 +1210,7 @@ function attachHandlers(section) {
         wrap.innerHTML = `
           <div class="table-scroll">
             <table>
-              <thead><tr><th></th><th>#</th><th>Name</th><th>Roll No</th><th>Role</th><th>Mobile</th><th>Designation</th><th>Status</th><th></th></tr></thead>
+              <thead><tr><th></th><th>#</th><th>Name</th><th>Roll No</th><th>Role</th><th>Gender</th><th>Mobile</th><th>Designation</th><th>Status</th><th></th></tr></thead>
               <tbody>
                 ${res.data.map((u, i) => `
                   <tr data-id="${u._id}">
@@ -1211,6 +1223,7 @@ function attachHandlers(section) {
                     <td>${u.first_name}</td>
                     <td>${u.roll_no}</td>
                     <td><span class="badge ${u.role === 'admin' ? 'badge-amber' : 'badge-success'}">${u.role}</span></td>
+                    <td>${escapeHtml(u.gender || '—')}</td>
                     <td>${u.mobile}</td>
                     <td>${u.designation}</td>
                     <td><span class="badge ${u.blocked ? 'badge-blocked' : 'badge-success'}">${u.blocked ? 'Blocked' : 'Active'}</span></td>
@@ -1377,6 +1390,15 @@ function attachHandlers(section) {
         <h3>Edit account — ${u.roll_no}</h3>
         <form id="editUserForm">
           <div class="field"><label>Full name</label><input required name="first_name" value="${u.first_name}" /></div>
+          <div class="field">
+            <label>Gender</label>
+            <select name="gender">
+              <option value="" ${!u.gender ? 'selected' : ''}>Not set</option>
+              <option value="Male" ${u.gender === 'Male' ? 'selected' : ''}>Male</option>
+              <option value="Female" ${u.gender === 'Female' ? 'selected' : ''}>Female</option>
+              <option value="Other" ${u.gender === 'Other' ? 'selected' : ''}>Other</option>
+            </select>
+          </div>
           <div class="field"><label>Designation</label><input name="designation" value="${u.designation}" /></div>
           <div class="field"><label>Mobile</label><input required name="mobile" value="${u.mobile}" /></div>
           <div class="field">
@@ -1400,6 +1422,7 @@ function attachHandlers(section) {
         const f = new FormData(e.target);
         const payload = {
           first_name: f.get('first_name'),
+          gender: f.get('gender') || '',
           designation: f.get('designation'),
           mobile: f.get('mobile'),
           role: f.get('role'),
@@ -1411,6 +1434,12 @@ function attachHandlers(section) {
         submitBtn.disabled = true;
         try {
           await updateUserViaApi(id, payload);
+          // Editing your own account: keep the copy saved at login in step,
+          // so your own Update Profile Pic tab shows the new gender.
+          if (u.roll_no === user.roll_no) {
+            user.gender = payload.gender;
+            setCurrentUser(user);
+          }
           closeModal();
           load();
         } catch (err) {
@@ -1456,6 +1485,7 @@ function attachHandlers(section) {
           'Name': u.first_name,
           'Roll No': u.roll_no,
           'Role': u.role,
+          'Gender': u.gender || '',
           'Mobile': u.mobile,
           'Designation': u.designation,
           'Status': u.blocked ? 'Blocked' : 'Active',
