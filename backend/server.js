@@ -37,6 +37,7 @@ const dutyPlaceRoutes = require('./routes/dutyPlaces');
 const dutyAssignmentRoutes = require('./routes/dutyAssignments');
 const qrScanRoutes = require('./routes/qrScans');
 const uploadedImageRoutes = require('./routes/uploadedImages');
+const scanSettingRoutes = require('./routes/scanSettings');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -51,6 +52,7 @@ app.use('/api/duty-places', dutyPlaceRoutes);
 app.use('/api/duty-assignments', dutyAssignmentRoutes);
 app.use('/api/qr-scans', qrScanRoutes);
 app.use('/api/uploaded-images', uploadedImageRoutes);
+app.use('/api/scan-settings', scanSettingRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', database: 'MongoDB (see /api/health/db for connection state)' });

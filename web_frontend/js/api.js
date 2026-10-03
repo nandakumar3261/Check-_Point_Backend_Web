@@ -295,3 +295,23 @@ async function uploadProfilePicViaApi(rollNo, file) {
   });
   return readJsonResponse(res);
 }
+
+/**
+ * The single global QR-scan time window (see routes/scanSettings.js,
+ * models/ScanSetting.js). Both ends are 24-hour "HH:mm" strings; the admin
+ * UI (Assign Duty -> Set Scan Time) converts to/from 12-hour + AM/PM only
+ * for display.
+ */
+async function fetchScanTimeViaApi() {
+  const res = await fetch('/api/scan-settings');
+  return readJsonResponse(res); // { from, to } - both null if never saved
+}
+
+async function saveScanTimeViaApi(from, to) {
+  const res = await fetch('/api/scan-settings', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from, to }),
+  });
+  return readJsonResponse(res); // { from, to }
+}

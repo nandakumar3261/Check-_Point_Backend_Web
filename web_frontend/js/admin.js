@@ -405,6 +405,7 @@ const renderers = {
     <div class="tabs" id="dutyStatusTabs">
       <button class="tab-btn active" data-tab="assignDuty" type="button">Assign Duty to Guard</button>
       <button class="tab-btn" data-tab="showAssigned" type="button">Show Assigned Duties</button>
+      <button class="tab-btn" data-tab="scanTime" type="button">Set Scan Time</button>
     </div>
 
     <div class="tab-panel" id="tab-assignDuty">
@@ -466,6 +467,46 @@ const renderers = {
             <button class="btn btn-outline" id="assignedNextBtn" style="padding:8px 16px;">Next</button>
           </div>
         </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-scanTime" style="display:none;">
+      <div class="card" style="max-width:480px;">
+        <div class="card-title">Scan Time Window</div>
+        <div class="form-grid">
+          <div class="field">
+            <label>From</label>
+            <div style="display:flex; gap:8px;">
+              <select id="scanTimeFromHour">
+                ${Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('')}
+              </select>
+              <select id="scanTimeFromMinute">
+                ${Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0')).map(m => `<option value="${m}">${m}</option>`).join('')}
+              </select>
+              <select id="scanTimeFromAmPm">
+                <option value="AM">AM</option>
+                <option value="PM">PM</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label>To</label>
+            <div style="display:flex; gap:8px;">
+              <select id="scanTimeToHour">
+                ${Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('')}
+              </select>
+              <select id="scanTimeToMinute">
+                ${Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0')).map(m => `<option value="${m}">${m}</option>`).join('')}
+              </select>
+              <select id="scanTimeToAmPm">
+                <option value="AM">AM</option>
+                <option value="PM">PM</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="error-text" id="scanTimeError"></div>
+        <button class="btn btn-primary" id="saveScanTimeBtn" type="button" style="margin-top:16px; width:auto; padding:10px 22px;">Submit</button>
       </div>
     </div>
   `,
@@ -1987,7 +2028,7 @@ function attachHandlers(section) {
 
   if (section === 'dutyStatus') {
     // ---------- Tab switching ----------
-    const dsTabNames = ['assignDuty', 'showAssigned'];
+    const dsTabNames = ['assignDuty', 'showAssigned', 'scanTime'];
     document.querySelectorAll('#dutyStatusTabs .tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('#dutyStatusTabs .tab-btn').forEach(b => b.classList.remove('active'));
@@ -1996,7 +2037,82 @@ function attachHandlers(section) {
           document.getElementById('tab-' + t).style.display = (t === btn.dataset.tab) ? 'block' : 'none';
         });
         if (btn.dataset.tab === 'showAssigned') loadAssignedDuties();
+        if (btn.dataset.tab === 'scanTime') loadScanTime();
       });
+    });
+
+    // ======================================================================
+    // Tab 3: Set Scan Time - a single global window (e.g. 18:00-06:00)
+    // during which guards are allowed to submit QR scans. Only one window
+    // is ever stored; saving overwrites whatever was there before.
+    // ======================================================================
+    // 12-hour + "AM"/"PM" (what the three dropdowns show) <-> 24-hour
+    // "HH:mm" (what's stored and sent to the server).
+    function to24Hour(hour12, minute, amPm) {
+      let h = parseInt(hour12, 10) % 12;
+      if (amPm === 'PM') h += 12;
+      return `${String(h).padStart(2, '0')}:${minute}`;
+    }
+    function from24Hour(hhmm) {
+      const [hStr, minute] = hhmm.split(':');
+      let h = parseInt(hStr, 10);
+      const amPm = h >= 12 ? 'PM' : 'AM';
+      h = h % 12 || 12;
+      return { hour: String(h), minute, amPm };
+    }
+    function setTimeFields(prefix, hour, minute, amPm) {
+      document.getElementById(`scanTime${prefix}Hour`).value = hour;
+      document.getElementById(`scanTime${prefix}Minute`).value = minute;
+      document.getElementById(`scanTime${prefix}AmPm`).value = amPm;
+    }
+    function readTimeFields(prefix) {
+      return to24Hour(
+        document.getElementById(`scanTime${prefix}Hour`).value,
+        document.getElementById(`scanTime${prefix}Minute`).value,
+        document.getElementById(`scanTime${prefix}AmPm`).value
+      );
+    }
+
+    // Shows whatever window is already saved, so reopening this tab doesn't
+    // look like it reset to blank defaults.
+    async function loadScanTime() {
+      const errBox = document.getElementById('scanTimeError');
+      errBox.textContent = '';
+      try {
+        const { from, to } = await fetchScanTimeViaApi();
+        if (from) {
+          const f = from24Hour(from);
+          setTimeFields('From', f.hour, f.minute, f.amPm);
+        }
+        if (to) {
+          const t = from24Hour(to);
+          setTimeFields('To', t.hour, t.minute, t.amPm);
+        }
+      } catch (err) {
+        errBox.textContent = err.message || 'Could not load the saved scan time.';
+      }
+    }
+    loadScanTime();
+
+    document.getElementById('saveScanTimeBtn').addEventListener('click', async () => {
+      const errBox = document.getElementById('scanTimeError');
+      errBox.textContent = '';
+      const btn = document.getElementById('saveScanTimeBtn');
+      const from = readTimeFields('From');
+      const to = readTimeFields('To');
+
+      btn.disabled = true;
+      const originalLabel = btn.textContent;
+      btn.textContent = 'Saving...';
+      try {
+        await saveScanTimeViaApi(from, to);
+        alert('Scan time window saved.');
+      } catch (err) {
+        errBox.textContent = err.message || 'Could not save the scan time window.';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalLabel;
+      }
     });
 
     // ======================================================================

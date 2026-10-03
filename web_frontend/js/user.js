@@ -25,9 +25,11 @@ function paintIdentity() {
   document.getElementById('sidebarName').textContent = user.first_name;
   document.getElementById('sidebarDesignation').textContent = user.designation || 'Security Guard';
   document.getElementById('sidebarEmpId').textContent = `Emp ID: ${user.roll_no}`;
-  // Always shown - "—" for accounts created before the field existed - so
-  // it's obvious the line is there even when no gender is on record yet.
-  document.getElementById('sidebarGender').textContent = `Gender: ${user.gender || '—'}`;
+  // Gender only shows once one is on record (accounts created before the
+  // field existed have none) - otherwise the line is hidden, not left blank.
+  const genderEl = document.getElementById('sidebarGender');
+  genderEl.textContent = user.gender ? `Gender: ${user.gender}` : '';
+  genderEl.style.display = user.gender ? '' : 'none';
   document.getElementById('sidebarMobile').textContent = user.mobile || '';
   document.getElementById('whoName').textContent = user.first_name;
   fillAvatar(document.getElementById('sidebarAvatar'));
