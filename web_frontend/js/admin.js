@@ -473,14 +473,36 @@ const renderers = {
     <div class="tab-panel" id="tab-scanTime" style="display:none;">
       <div class="card" style="max-width:480px;">
         <div class="card-title">Scan Time Window</div>
-        <div id="currentScanTimeDisplay" style="margin:-4px 0 16px; font-size:13px; color:var(--ink-500);">Loading the current window...</div>
+        <p id="scanTimeCurrent" style="color:var(--ink-500); font-size:13px; margin:-6px 0 16px;">Loading current window...</p>
         <div class="field">
           <label>From</label>
-          <input type="time" id="scanTimeFrom" value="00:00" style="padding:10px 12px;">
+          <div style="display:flex; gap:8px;">
+            <select id="scanTimeFromHour" style="flex:1; min-width:0; padding:10px 6px; text-align:center;">
+              ${Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('')}
+            </select>
+            <select id="scanTimeFromMinute" style="flex:1; min-width:0; padding:10px 6px; text-align:center;">
+              ${Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0')).map(m => `<option value="${m}">${m}</option>`).join('')}
+            </select>
+            <select id="scanTimeFromAmPm" style="flex:1; min-width:0; padding:10px 6px; text-align:center;">
+              <option value="AM">AM</option>
+              <option value="PM">PM</option>
+            </select>
+          </div>
         </div>
         <div class="field">
           <label>To</label>
-          <input type="time" id="scanTimeTo" value="00:00" style="padding:10px 12px;">
+          <div style="display:flex; gap:8px;">
+            <select id="scanTimeToHour" style="flex:1; min-width:0; padding:10px 6px; text-align:center;">
+              ${Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('')}
+            </select>
+            <select id="scanTimeToMinute" style="flex:1; min-width:0; padding:10px 6px; text-align:center;">
+              ${Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0')).map(m => `<option value="${m}">${m}</option>`).join('')}
+            </select>
+            <select id="scanTimeToAmPm" style="flex:1; min-width:0; padding:10px 6px; text-align:center;">
+              <option value="AM">AM</option>
+              <option value="PM">PM</option>
+            </select>
+          </div>
         </div>
         <div class="error-text" id="scanTimeError"></div>
         <button class="btn btn-primary" id="saveScanTimeBtn" type="button" style="margin-top:16px; width:auto; padding:10px 22px;">Submit</button>
@@ -2023,42 +2045,65 @@ function attachHandlers(section) {
     // during which guards are allowed to submit QR scans. Only one window
     // is ever stored; saving overwrites whatever was there before.
     // ======================================================================
-    // "18:00" -> "6:00 PM", for the human-readable display above the form.
-    // The <input type="time"> fields themselves already use 24-hour "HH:mm"
-    // in their .value, matching what the server stores, so no conversion is
-    // needed to read or write them - only for this display text.
-    function formatTimeLabel(hhmm) {
+    // 12-hour + "AM"/"PM" (what the three dropdowns show) <-> 24-hour
+    // "HH:mm" (what's stored and sent to the server).
+    function to24Hour(hour12, minute, amPm) {
+      let h = parseInt(hour12, 10) % 12;
+      if (amPm === 'PM') h += 12;
+      return `${String(h).padStart(2, '0')}:${minute}`;
+    }
+    function from24Hour(hhmm) {
       const [hStr, minute] = hhmm.split(':');
       let h = parseInt(hStr, 10);
       const amPm = h >= 12 ? 'PM' : 'AM';
       h = h % 12 || 12;
-      return `${h}:${minute} ${amPm}`;
+      return { hour: String(h), minute, amPm };
     }
-    // Shows the window currently saved on the server, separate from the time
-    // inputs below (which are for editing, not just for display) - so it's
-    // obvious at a glance what's in effect right now, before you touch
-    // anything.
-    function showCurrentScanTime(from, to) {
-      const display = document.getElementById('currentScanTimeDisplay');
-      display.textContent = (from && to)
-        ? `Currently saved: ${formatTimeLabel(from)} \u2013 ${formatTimeLabel(to)}`
-        : 'No scan time window has been set yet.';
+    function setTimeFields(prefix, hour, minute, amPm) {
+      document.getElementById(`scanTime${prefix}Hour`).value = hour;
+      document.getElementById(`scanTime${prefix}Minute`).value = minute;
+      document.getElementById(`scanTime${prefix}AmPm`).value = amPm;
+    }
+    function readTimeFields(prefix) {
+      return to24Hour(
+        document.getElementById(`scanTime${prefix}Hour`).value,
+        document.getElementById(`scanTime${prefix}Minute`).value,
+        document.getElementById(`scanTime${prefix}AmPm`).value
+      );
+    }
+    function formatTime12(hhmm) {
+      const { hour, minute, amPm } = from24Hour(hhmm);
+      return `${hour}:${minute} ${amPm}`;
+    }
+    // The readable "Current window: ..." line above the dropdowns - kept in
+    // sync both when the tab loads and right after a successful save, so
+    // the admin can see what's actually saved without having to read six
+    // dropdowns.
+    function showCurrentWindow(from, to) {
+      const el = document.getElementById('scanTimeCurrent');
+      el.textContent = (from && to)
+        ? `Current window: ${formatTime12(from)} – ${formatTime12(to)}`
+        : 'No scan time window set yet.';
     }
 
-    // Pre-fills the time inputs (defaulting to 00:00 when nothing has been
-    // saved yet) AND shows the readable "Currently saved: ..." line, so
-    // reopening this tab doesn't look like it reset to blank and the admin
-    // can see the previous window at a glance.
+    // Shows whatever window is already saved, so reopening this tab doesn't
+    // look like it reset to blank defaults.
     async function loadScanTime() {
       const errBox = document.getElementById('scanTimeError');
       errBox.textContent = '';
       try {
         const { from, to } = await fetchScanTimeViaApi();
-        showCurrentScanTime(from, to);
-        document.getElementById('scanTimeFrom').value = from || '00:00';
-        document.getElementById('scanTimeTo').value = to || '00:00';
+        showCurrentWindow(from, to);
+        if (from) {
+          const f = from24Hour(from);
+          setTimeFields('From', f.hour, f.minute, f.amPm);
+        }
+        if (to) {
+          const t = from24Hour(to);
+          setTimeFields('To', t.hour, t.minute, t.amPm);
+        }
       } catch (err) {
-        document.getElementById('currentScanTimeDisplay').textContent = '';
+        document.getElementById('scanTimeCurrent').textContent = '';
         errBox.textContent = err.message || 'Could not load the saved scan time.';
       }
     }
@@ -2068,15 +2113,14 @@ function attachHandlers(section) {
       const errBox = document.getElementById('scanTimeError');
       errBox.textContent = '';
       const btn = document.getElementById('saveScanTimeBtn');
-      const from = document.getElementById('scanTimeFrom').value || '00:00';
-      const to = document.getElementById('scanTimeTo').value || '00:00';
+      const from = readTimeFields('From');
+      const to = readTimeFields('To');
 
       btn.disabled = true;
       const originalLabel = btn.textContent;
       btn.textContent = 'Saving...';
       try {
-        const saved = await saveScanTimeViaApi(from, to);
-        showCurrentScanTime(saved.from, saved.to); // reflect the new window immediately, no reload needed
+        await saveScanTimeViaApi(from, to);
         alert('Scan time window saved.');
       } catch (err) {
         errBox.textContent = err.message || 'Could not save the scan time window.';
