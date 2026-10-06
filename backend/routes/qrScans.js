@@ -1,6 +1,48 @@
 const express = require('express');
 const QrScan = require('../models/QrScan');
 const DutyAssignment = require('../models/DutyAssignment');
+const ScanSetting = require('../models/ScanSetting');
+
+// India doesn't observe DST, so a fixed UTC+5:30 offset is always correct -
+// matches the tzOffset convention already used for duty-date bounds
+// elsewhere in this app. The admin's "Set Scan Time" window and every
+// guard's phone are both assumed to be on IST wall-clock time.
+const IST_OFFSET_MINUTES = 330;
+
+// "HH:mm" -> minutes since midnight.
+function minutesOf(hhmm) {
+  const [h, m] = hhmm.split(':').map(Number);
+  return h * 60 + m;
+}
+
+// Whether the current moment falls inside the admin-configured scan window
+// (handles a window that crosses midnight, e.g. "21:00" - "05:00"). Returns
+// true (open) if no window has been saved yet - the admin hasn't chosen to
+// restrict scanning, so the server shouldn't invent a restriction. Takes the
+// ScanSetting doc rather than querying for it itself, so the POST /
+// handler below can reuse the same doc to build its error message.
+function isWithinScanWindow(setting) {
+  if (!setting) return true;
+
+  const nowIst = new Date(Date.now() + IST_OFFSET_MINUTES * 60000);
+  const nowMin = nowIst.getUTCHours() * 60 + nowIst.getUTCMinutes();
+  const fromMin = minutesOf(setting.from);
+  const toMin = minutesOf(setting.to);
+  if (fromMin === toMin) return true; // from == to -> treat as "no restriction"
+
+  return fromMin < toMin
+    ? nowMin >= fromMin && nowMin < toMin // same-day window
+    : nowMin >= fromMin || nowMin < toMin; // overnight window
+}
+
+// "21:00" -> "9:00 PM", for the rejection message below.
+function formatHHmm(hhmm) {
+  const [hStr, minute] = hhmm.split(':');
+  let h = parseInt(hStr, 10);
+  const amPm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return `${h}:${minute} ${amPm}`;
+}
 
 const router = express.Router();
 
@@ -225,6 +267,13 @@ router.post('/', async (req, res) => {
     }
     if (!scannedSubPlace) {
       return res.status(400).json({ error: 'No QR data to submit.' });
+    }
+
+    const scanSetting = await ScanSetting.findOne({});
+    if (!isWithinScanWindow(scanSetting)) {
+      return res.status(400).json({
+        error: `Scanning is only accepted between ${formatHHmm(scanSetting.from)} and ${formatHHmm(scanSetting.to)}.`,
+      });
     }
 
     const { start, end } = todayBoundsUTC();
