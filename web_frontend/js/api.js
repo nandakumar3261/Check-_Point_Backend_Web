@@ -38,6 +38,51 @@ async function loginViaApi(roll_no, password) {
   return readJsonResponse(res); // { roll_no, first_name, designation, mobile, role }
 }
 
+/**
+ * Re-checks a roll_no/password pair against the server WITHOUT throwing -
+ * used to silently revalidate an existing session (is the account still
+ * active, does the stored password still match what's on the server right
+ * now), as opposed to loginViaApi() which is for the interactive login form
+ * and throws so the form can show the error inline.
+ *
+ * Returns:
+ *   { ok: true,  user }     - still valid; `user` is the fresh profile
+ *   { ok: false, message }  - rejected by the server (wrong password, i.e.
+ *                             it was changed elsewhere, or account blocked)
+ *   { ok: null }            - inconclusive (server/network hiccup) - the
+ *                             caller should NOT log the person out for this,
+ *                             only for an explicit { ok: false }
+ */
+async function verifyCredentials(roll_no, password) {
+  let res;
+  try {
+    res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ roll_no, password }),
+    });
+  } catch (err) {
+    return { ok: null }; // network error - can't confirm either way
+  }
+
+  let body = {};
+  try {
+    const text = await res.text();
+    const contentType = res.headers.get('content-type') || '';
+    if (contentType.includes('application/json') && text) body = JSON.parse(text);
+  } catch (err) {
+    return { ok: null }; // unparseable response - can't confirm either way
+  }
+
+  if (res.status === 401 || res.status === 403) {
+    return { ok: false, message: body.error || 'Your session is no longer valid. Please log in again.' };
+  }
+  if (!res.ok) {
+    return { ok: null }; // some other server error - inconclusive
+  }
+  return { ok: true, user: body };
+}
+
 async function fetchUsersViaApi({ role, search, page = 1, limit = 10 } = {}) {
   const params = new URLSearchParams();
   if (role) params.set('role', role);

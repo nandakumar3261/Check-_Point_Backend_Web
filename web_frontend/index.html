@@ -74,7 +74,7 @@
 
     try {
       const user = await loginViaApi(rollNo, password);
-      setCurrentUser(user);
+      setCurrentUser(user, password); // password kept (obfuscated, this tab only) so the session can be re-verified later
       window.location.href = user.role === 'admin' ? 'admin.html' : 'user.html';
     } catch (err) {
       errorText.textContent = err.message || 'Invalid roll number or password.';

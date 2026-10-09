@@ -42,18 +42,99 @@ const MOCK = {
   // uploadImageViaApi() in api.js (see routes/uploadedImages.js).
 };
 
+/**
+ * Session storage for the logged-in user, plus the password they signed in
+ * with - kept only so this tab can silently re-check itself against the
+ * server (see verifySessionStillValid below), so that a password changed
+ * from another browser/device invalidates this session automatically
+ * instead of leaving it logged in with stale credentials.
+ *
+ * Honest security note: this is light obfuscation (base64), not real
+ * encryption - a secret stored and read back by the same client-side code
+ * can never be truly secret, since anyone with devtools access to this
+ * session already has everything needed to decode it. The actual
+ * protections here are: sessionStorage is wiped when the tab closes, the
+ * password never leaves the browser except back to the same login
+ * endpoint over HTTPS in production, and the server only ever compares it
+ * against a bcrypt hash - it's never stored anywhere in plaintext on disk.
+ */
+function _encodePw(pw) {
+  try {
+    return btoa(unescape(encodeURIComponent(pw)));
+  } catch (err) {
+    return '';
+  }
+}
+function _decodePw(encoded) {
+  try {
+    return decodeURIComponent(escape(atob(encoded)));
+  } catch (err) {
+    return '';
+  }
+}
+
 function currentUser() {
   const raw = sessionStorage.getItem('asg_user');
   return raw ? JSON.parse(raw) : null;
 }
 
-function setCurrentUser(user) {
+/** `password` is optional - pass it at login time; omit it on later updates
+ *  (e.g. refreshing the cached profile) to leave the stored one untouched. */
+function setCurrentUser(user, password) {
   sessionStorage.setItem('asg_user', JSON.stringify(user));
+  if (password) sessionStorage.setItem('asg_cred', _encodePw(password));
+}
+
+function _storedPassword() {
+  const raw = sessionStorage.getItem('asg_cred');
+  return raw ? _decodePw(raw) : null;
 }
 
 function logout() {
   sessionStorage.removeItem('asg_user');
+  sessionStorage.removeItem('asg_cred');
   window.location.href = 'index.html';
+}
+
+/**
+ * Re-checks the signed-in account against the server: still exists, not
+ * blocked, and the stored password still matches what's on the server
+ * right now. If it doesn't - most commonly because the password was
+ * changed from another device - the session is cleared and the person is
+ * sent back to the login page. A transient network/server error does NOT
+ * log the person out; only an explicit rejection from the server does.
+ *
+ * Returns true if the caller should proceed (valid, or inconclusive due to
+ * a hiccup), false if the session was invalid and has already been
+ * cleared + redirected away from.
+ */
+async function verifySessionStillValid() {
+  const u = currentUser();
+  if (!u) return true; // no session at all; requireRole() already sends those to the login page
+
+  const pw = _storedPassword();
+  if (!pw) {
+    // A session with a cached profile but no stored credential (e.g. one
+    // started before this check existed) can't be verified against the
+    // server, so don't trust it - one fresh login fixes it for good.
+    sessionStorage.removeItem('asg_user');
+    alert('Please log in again to continue.');
+    window.location.href = 'index.html';
+    return false;
+  }
+
+  const result = await verifyCredentials(u.roll_no, pw);
+  if (result.ok === false) {
+    sessionStorage.removeItem('asg_user');
+    sessionStorage.removeItem('asg_cred');
+    alert(result.message || 'Your session is no longer valid. Please log in again.');
+    window.location.href = 'index.html';
+    return false;
+  }
+  if (result.ok === true) {
+    setCurrentUser(result.user); // keep the cached profile fresh; stored password is untouched
+  }
+  return true; // valid, or inconclusive (network/server hiccup) - don't punish the user for that
 }
 
 function requireRole(role) {

@@ -87,7 +87,15 @@ document.getElementById('menuToggle').addEventListener('click', () => {
   document.getElementById('sidebar').classList.toggle('open');
 });
 
+let _firstRenderDone = false;
+
 function render(section) {
+  // Every later page/section switch re-checks the session in the background
+  // (not awaited, so navigation stays instant); the very first render is
+  // gated on the same check instead - see the bootstrap at the bottom.
+  if (_firstRenderDone) verifySessionStillValid();
+  _firstRenderDone = true;
+
   document.getElementById('content').innerHTML = renderers[section]();
   attachHandlers(section);
 }
@@ -2810,4 +2818,15 @@ function attachHandlers(section) {
   }
 }
 
-render('home');
+// Before ANY page content is shown, confirm with the server that this
+// account is still active and the stored password still matches the current
+// one (e.g. it hasn't been changed from another browser/device). If not,
+// verifySessionStillValid() has already cleared the session and sent the
+// person back to the login page, so nothing else is rendered.
+(async function bootstrap() {
+  document.getElementById('content').innerHTML =
+    '<p style="color:var(--ink-500); font-size:13px;">Checking your session…</p>';
+  const stillValid = await verifySessionStillValid();
+  if (!stillValid) return;
+  render('home');
+})();
