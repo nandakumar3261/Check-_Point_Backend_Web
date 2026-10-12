@@ -138,6 +138,15 @@ const renderers = {
           <input type="text" id="recentScansSearch" placeholder="Search by name, emp id, main place or sub place..." />
         </div>
         <div class="toolbar-right">
+          <div class="page-size-field">
+            <label for="recentScansPageSizeSelect">Rows per page</label>
+            <select id="recentScansPageSizeSelect">
+              <option value="10" selected>10</option>
+              <option value="20">20</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+          </div>
           <select id="recentScansStatusFilter">
             <option value="all" selected>All</option>
             <option value="scanned">Scanned</option>
@@ -162,6 +171,13 @@ const renderers = {
             <tr><td colspan="7" style="color:var(--ink-500); font-size:13px;">Loading from MongoDB...</td></tr>
           </tbody>
         </table>
+      </div>
+      <div class="pagination-bar">
+        <div class="page-info" id="recentScansPageInfo"></div>
+        <div class="page-controls">
+          <button class="btn btn-outline" id="recentScansPrevBtn" style="padding:8px 16px;" disabled>Previous</button>
+          <button class="btn btn-outline" id="recentScansNextBtn" style="padding:8px 16px;" disabled>Next</button>
+        </div>
       </div>
     </div>
   `,
@@ -569,7 +585,7 @@ function attachHandlers(section) {
     // ---------- Recent QR scans: date-scoped table with search + status filter ----------
     // rows are the per-guard coverage data flattened to one row per sub place, so the
     // table shows everything at a glance with no tap needed to drill into a guard.
-    const recentScansState = { date: todayISODate(), rows: [], search: '', status: 'all' };
+    const recentScansState = { date: todayISODate(), rows: [], search: '', status: 'all', page: 1, limit: 10 };
 
     function flattenRecentScansCoverage(guards) {
       const rows = [];
@@ -622,19 +638,53 @@ function attachHandlers(section) {
       });
     }
 
+    // "Showing 1-10 of 139" + Previous/Next state for the table. Counts are
+    // the numbered entries in the # column (one per guard + main place), so
+    // "10 per page" means #1-#10, and each one's sub places stay together.
+    function updateRecentScansPager(total, totalPages) {
+      const { page, limit } = recentScansState;
+      const from = total === 0 ? 0 : (page - 1) * limit + 1;
+      const to = Math.min(page * limit, total);
+      document.getElementById('recentScansPageInfo').textContent = total === 0 ? '' : `Showing ${from}-${to} of ${total}`;
+      document.getElementById('recentScansPrevBtn').disabled = page <= 1;
+      document.getElementById('recentScansNextBtn').disabled = page >= totalPages;
+    }
+
     function renderRecentScansTable() {
       const body = document.getElementById('recentScansBody');
       const filtered = recentScansState.rows.filter(matchesRecentScansFilters);
       if (!filtered.length) {
         const msg = recentScansState.rows.length ? 'No scans match your search/filter.' : 'No duty assigned for this date.';
         body.innerHTML = `<tr><td colspan="7" style="color:var(--ink-500); font-size:13px;">${msg}</td></tr>`;
+        updateRecentScansPager(0, 1);
         return;
       }
+
+      // Paginate by the # column: each numbered entry (a guard + main place
+      // with all its sub places) counts as one row, so a page of 10 is #1-#10
+      // and an entry is never cut in half. Numbering is computed over the whole
+      // filtered list first, so page 2 continues at #11 instead of restarting.
+      const allGrouped = computeGroupedRecentScans(filtered);
+      const totalEntries = allGrouped[allGrouped.length - 1].groupIndex;
+      const limit = recentScansState.limit;
+      const totalPages = Math.max(1, Math.ceil(totalEntries / limit));
+      recentScansState.page = Math.min(Math.max(1, recentScansState.page), totalPages);
+      const firstEntry = (recentScansState.page - 1) * limit; // entries before this page
+      const pageRows = allGrouped.filter(r => r.groupIndex > firstEntry && r.groupIndex <= firstEntry + limit);
+      updateRecentScansPager(totalEntries, totalPages);
 
       // Rows already come grouped by guard (then by main place), so a repeat
       // guard/main-place/serial only ever shows up on consecutive rows -
       // merge those with rowspan instead of re-printing them on every line.
-      const grouped = computeGroupedRecentScans(filtered);
+      // Group boundaries are re-derived within this page (a guard who has two
+      // main places could still straddle a page break, and this keeps the
+      // merged name cell correct either way).
+      const grouped = pageRows.map((r, j) => {
+        const prev = pageRows[j - 1];
+        const sameGuard = prev && prev.guardEmpId === r.guardEmpId;
+        const sameGroup = prev && prev.groupIndex === r.groupIndex;
+        return { ...r, isNewGuard: !sameGuard, isNewGroup: !sameGroup };
+      });
       const html = [];
       for (let i = 0; i < grouped.length; i++) {
         const r = grouped[i];
@@ -688,6 +738,7 @@ function attachHandlers(section) {
       updateRecentScansHeading(date);
       document.getElementById('recentScansBody').innerHTML =
         '<tr><td colspan="7" style="color:var(--ink-500); font-size:13px;">Loading from MongoDB...</td></tr>';
+      updateRecentScansPager(0, 1);
 
       fetchQrScanCoverageViaApi({ date })
         .then(res => {
@@ -697,6 +748,7 @@ function attachHandlers(section) {
         .catch(err => {
           document.getElementById('recentScansBody').innerHTML =
             `<tr><td colspan="7" style="color:var(--danger); font-size:13px;">Could not load from MongoDB: ${err.message}</td></tr>`;
+          updateRecentScansPager(0, 1);
         });
     }
 
@@ -710,6 +762,7 @@ function attachHandlers(section) {
     });
     recentScansDateInput.addEventListener('change', (e) => {
       recentScansState.date = e.target.value || todayISODate();
+      recentScansState.page = 1;
       loadRecentScans(recentScansState.date);
     });
 
@@ -718,12 +771,30 @@ function attachHandlers(section) {
       clearTimeout(recentScansSearchTimer);
       recentScansSearchTimer = setTimeout(() => {
         recentScansState.search = e.target.value.trim();
+        recentScansState.page = 1;
         renderRecentScansTable();
       }, 250);
     });
 
     document.getElementById('recentScansStatusFilter').addEventListener('change', (e) => {
       recentScansState.status = e.target.value;
+      recentScansState.page = 1;
+      renderRecentScansTable();
+    });
+
+    document.getElementById('recentScansPageSizeSelect').addEventListener('change', (e) => {
+      recentScansState.limit = parseInt(e.target.value, 10);
+      recentScansState.page = 1;
+      renderRecentScansTable();
+    });
+
+    document.getElementById('recentScansPrevBtn').addEventListener('click', () => {
+      recentScansState.page -= 1;
+      renderRecentScansTable();
+    });
+
+    document.getElementById('recentScansNextBtn').addEventListener('click', () => {
+      recentScansState.page += 1;
       renderRecentScansTable();
     });
 
