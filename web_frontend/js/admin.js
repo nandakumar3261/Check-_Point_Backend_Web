@@ -213,7 +213,7 @@ const renderers = {
     </div>
 
     <div class="tab-panel" id="tab-getUploadImages" style="display:none;">
-      <div class="image-grid" id="uploadedImagesGrid">
+      <div id="uploadedImagesView">
         <p style="color:var(--ink-500); font-size:13px;">Loading from MongoDB...</p>
       </div>
     </div>
@@ -1039,13 +1039,18 @@ function attachHandlers(section) {
     });
 
     // ======================================================================
-    // Tab: Get Upload Images - every photo submitted so far, most recent
-    // first, each tagged with who submitted it (name + emp id), when
-    // (date + time), and the comment they wrote at pick-time. Tapping a
-    // thumbnail opens it full-size in a modal; each tile (and the modal)
-    // also has a Download button that saves the original file.
+    // Tab: Get Upload Images - photos grouped by the date they were
+    // uploaded. The most recent date's photos are shown straight away (each
+    // tagged with who submitted it - name + emp id -, when, and the comment
+    // they wrote at pick-time); every earlier date becomes a card with a
+    // cover photo and a count. Tapping a date card opens that date's photos
+    // on their own page (with a Back button). Tapping a thumbnail opens it
+    // full-size in a modal; each tile (and the modal) also has a Download
+    // button that saves the original file.
     // ======================================================================
     let uploadedImagesById = new Map();
+    let uploadedImagesByDate = new Map(); // 'YYYY-MM-DD' (local) -> images, newest first
+    let uploadedDateKeys = [];            // newest date first ('unknown' last)
 
     function imageFileExt(imageUrl) {
       const dot = imageUrl.lastIndexOf('.');
@@ -1069,6 +1074,161 @@ function attachHandlers(section) {
         ? ''
         : uploaded.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
       return { dateStr, timeStr };
+    }
+
+    // ----- date helpers (all in the browser's local time, like the rest of the panel) -----
+    function localDateKey(d) {
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function imageDateKey(img) {
+      const d = new Date(img.uploadedAt || img.createdAt);
+      return isNaN(d.getTime()) ? 'unknown' : localDateKey(d);
+    }
+
+    function dateFromKey(key) {
+      const [y, m, d] = key.split('-').map(Number);
+      return new Date(y, m - 1, d);
+    }
+
+    function yesterdayKey() {
+      const d = new Date();
+      d.setDate(d.getDate() - 1);
+      return localDateKey(d);
+    }
+
+    // "12 Oct 2026"
+    function shortDateLabel(key) {
+      return key === 'unknown'
+        ? 'Unknown date'
+        : dateFromKey(key).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    // "Today, 13 Oct 2026" / "Yesterday, 12 Oct 2026" / "12 Oct 2026"
+    function friendlyDateLabel(key) {
+      if (key === todayISODate()) return `Today, ${shortDateLabel(key)}`;
+      if (key === yesterdayKey()) return `Yesterday, ${shortDateLabel(key)}`;
+      return shortDateLabel(key);
+    }
+
+    function plural(n, word) {
+      return `${n} ${word}${n === 1 ? '' : 's'}`;
+    }
+
+    // ----- rendering -----
+    function imageTileHtml(img) {
+      const { dateStr, timeStr } = formatImageDateTime(img);
+      return `
+        <div class="image-tile">
+          <div class="ph viewable" style="height:140px;" data-img-id="${img._id}" title="Tap to view full size">
+            <img src="${img.imageUrl}" alt="Uploaded by ${escapeHtml(img.guardName)}" style="width:100%; height:100%; object-fit:cover;">
+            <a class="dl-btn" href="${img.imageUrl}" download="${downloadFileName(img)}" title="Download" onclick="event.stopPropagation()">⬇</a>
+          </div>
+          <div class="meta">
+            <b>${escapeHtml(img.guardName)} ( ${escapeHtml(img.guardEmpId)} )</b>
+            <span>${dateStr} • ${timeStr}</span>
+            <p class="comment">"${escapeHtml(img.comment)}"</p>
+          </div>
+        </div>`;
+    }
+
+    function bindImageTiles(container) {
+      container.querySelectorAll('.ph.viewable').forEach(el => {
+        el.addEventListener('click', () => openImagePreview(el.dataset.imgId));
+      });
+    }
+
+    // How the date card's thumbnail mosaic is laid out for N photos, on a
+    // 6-column x 2-row grid: [columns to span, rows to span] per thumbnail.
+    // Up to 6 thumbnails are shown; with more than 6 photos the last one
+    // becomes a "+N" tile for the rest.
+    function mosaicSpans(count) {
+      if (count <= 1) return [[6, 2]];
+      if (count === 2) return [[3, 2], [3, 2]];
+      if (count === 3) return [[3, 2], [3, 1], [3, 1]];
+      if (count === 4) return [[3, 1], [3, 1], [3, 1], [3, 1]];
+      if (count === 5) return [[3, 1], [3, 1], [2, 1], [2, 1], [2, 1]];
+      return [[2, 1], [2, 1], [2, 1], [2, 1], [2, 1], [2, 1]];
+    }
+
+    function dateCardHtml(key) {
+      const imgs = uploadedImagesByDate.get(key);
+      const spans = mosaicSpans(imgs.length);
+      const hidden = imgs.length - spans.length; // photos that don't fit in the mosaic
+      const thumbs = spans.map(([cols, rows], i) => {
+        const isMore = hidden > 0 && i === spans.length - 1;
+        // when there are more photos than slots, the last slot is "+N" (it
+        // stands in for its own photo too, hence hidden + 1)
+        return `
+          <div class="mosaic-thumb" style="grid-column: span ${cols}; grid-row: span ${rows};">
+            <img src="${imgs[i].imageUrl}" alt="" loading="lazy">
+            ${isMore ? `<span class="mosaic-more">+${hidden + 1}</span>` : ''}
+          </div>`;
+      }).join('');
+      const weekday = key === 'unknown'
+        ? ''
+        : (key === yesterdayKey() ? 'Yesterday' : dateFromKey(key).toLocaleDateString('en-IN', { weekday: 'long' }));
+      const sub = [weekday, plural(imgs.length, 'image')].filter(Boolean).join(' • ');
+      return `
+        <button type="button" class="date-card" data-date-key="${key}" title="View ${plural(imgs.length, 'image')} from ${shortDateLabel(key)}">
+          <div class="date-card-cover">${thumbs}</div>
+          <div class="date-card-body">
+            <div><b>${shortDateLabel(key)}</b><span>${sub}</span></div>
+            <span class="chev">›</span>
+          </div>
+        </button>`;
+    }
+
+    // Landing view: latest date's photos, then a card per earlier date.
+    function renderUploadedImagesList() {
+      const view = document.getElementById('uploadedImagesView');
+      if (uploadedDateKeys.length === 0) {
+        view.innerHTML = '<p style="color:var(--ink-500); font-size:13px;">No images uploaded yet.</p>';
+        return;
+      }
+      const [latestKey, ...olderKeys] = uploadedDateKeys;
+      const latest = uploadedImagesByDate.get(latestKey);
+
+      view.innerHTML = `
+        <div class="img-date-head">
+          <h3>Recent</h3>
+          <span>${friendlyDateLabel(latestKey)} • ${plural(latest.length, 'image')}</span>
+        </div>
+        <div class="image-grid">${latest.map(imageTileHtml).join('')}</div>
+        ${olderKeys.length ? `
+          <div class="img-date-head" style="margin-top:30px;">
+            <h3>Previous dates</h3>
+            <span>Tap a date to see its images</span>
+          </div>
+          <div class="date-card-grid">${olderKeys.map(dateCardHtml).join('')}</div>` : ''}
+      `;
+
+      bindImageTiles(view);
+      view.querySelectorAll('.date-card').forEach(card => {
+        card.addEventListener('click', () => renderUploadedImagesForDate(card.dataset.dateKey));
+      });
+    }
+
+    // "Another page": every photo from one date, with a Back button.
+    function renderUploadedImagesForDate(key) {
+      const view = document.getElementById('uploadedImagesView');
+      const imgs = uploadedImagesByDate.get(key) || [];
+      view.innerHTML = `
+        <div class="img-detail-head">
+          <button type="button" class="btn btn-outline" id="imagesBackBtn" style="width:auto; padding:8px 16px;">← Back</button>
+          <div class="img-date-head" style="margin:0;">
+            <h3>${friendlyDateLabel(key)}</h3>
+            <span>${plural(imgs.length, 'image')}</span>
+          </div>
+        </div>
+        <div class="image-grid">${imgs.map(imageTileHtml).join('')}</div>
+      `;
+      document.getElementById('imagesBackBtn').addEventListener('click', () => {
+        renderUploadedImagesList();
+        window.scrollTo({ top: 0 });
+      });
+      bindImageTiles(view);
+      window.scrollTo({ top: 0 });
     }
 
     // Tapping a thumbnail (anywhere except its Download button) opens the
@@ -1095,38 +1255,45 @@ function attachHandlers(section) {
       document.getElementById('closePreviewBtn').addEventListener('click', closeModal);
     }
 
+    // Grouping needs every photo, not just the first page, so keep paging
+    // (100 at a time) until the server says there are no more.
+    async function fetchAllUploadedImages() {
+      const all = [];
+      let page = 1;
+      let totalPages = 1;
+      do {
+        const res = await fetchUploadedImagesViaApi({ page, limit: 100 });
+        all.push(...res.data);
+        totalPages = res.totalPages || 1;
+        page += 1;
+      } while (page <= totalPages && page <= 50);
+      return all;
+    }
+
     async function loadUploadedImages() {
-      const grid = document.getElementById('uploadedImagesGrid');
-      grid.innerHTML = '<p style="color:var(--ink-500); font-size:13px;">Loading from MongoDB...</p>';
+      const view = document.getElementById('uploadedImagesView');
+      view.innerHTML = '<p style="color:var(--ink-500); font-size:13px;">Loading from MongoDB...</p>';
       try {
-        const { data } = await fetchUploadedImagesViaApi({ limit: 100 });
+        const data = await fetchAllUploadedImages();
+        const stamp = img => new Date(img.uploadedAt || img.createdAt).getTime() || 0;
+        data.sort((a, b) => stamp(b) - stamp(a));
+
         uploadedImagesById = new Map(data.map(img => [img._id, img]));
-
-        if (data.length === 0) {
-          grid.innerHTML = '<p style="color:var(--ink-500); font-size:13px;">No images uploaded yet.</p>';
-          return;
-        }
-        grid.innerHTML = data.map(img => {
-          const { dateStr, timeStr } = formatImageDateTime(img);
-          return `
-            <div class="image-tile">
-              <div class="ph viewable" style="height:140px;" data-img-id="${img._id}" title="Tap to view full size">
-                <img src="${img.imageUrl}" alt="Uploaded by ${escapeHtml(img.guardName)}" style="width:100%; height:100%; object-fit:cover;">
-                <a class="dl-btn" href="${img.imageUrl}" download="${downloadFileName(img)}" title="Download" onclick="event.stopPropagation()">⬇</a>
-              </div>
-              <div class="meta">
-                <b>${escapeHtml(img.guardName)} ( ${escapeHtml(img.guardEmpId)} )</b>
-                <span>${dateStr} • ${timeStr}</span>
-                <p class="comment">"${escapeHtml(img.comment)}"</p>
-              </div>
-            </div>`;
-        }).join('');
-
-        grid.querySelectorAll('.ph.viewable').forEach(el => {
-          el.addEventListener('click', () => openImagePreview(el.dataset.imgId));
+        uploadedImagesByDate = new Map();
+        data.forEach(img => {
+          const key = imageDateKey(img);
+          if (!uploadedImagesByDate.has(key)) uploadedImagesByDate.set(key, []);
+          uploadedImagesByDate.get(key).push(img);
         });
+        uploadedDateKeys = [...uploadedImagesByDate.keys()].sort((a, b) => {
+          if (a === 'unknown') return 1;
+          if (b === 'unknown') return -1;
+          return a < b ? 1 : -1; // newest date first
+        });
+
+        renderUploadedImagesList();
       } catch (err) {
-        grid.innerHTML = `<p style="color:#e2574c; font-size:13px;">${err.message || 'Could not load uploaded images.'}</p>`;
+        view.innerHTML = `<p style="color:#e2574c; font-size:13px;">${escapeHtml(err.message || 'Could not load uploaded images.')}</p>`;
       }
     }
 
