@@ -57,3 +57,8 @@ Flutter app). They are stored on the `QrScan` document and returned with it.
 Both must be present, numeric, and in range (lat -90..90, lng -180..180);
 otherwise they are silently dropped and the scan is still saved without a
 location - attendance is never blocked by missing GPS.
+
+`GET /api/qr-scans/coverage` returns, for each sub place, the existing `scans`
+(timestamps) plus a parallel `scanDetails` list - `{ scannedAt, latitude,
+longitude }` per scan, oldest first, with `latitude`/`longitude` null for a scan
+saved without a GPS fix. The Logs / Data screen shows these under each scan time.

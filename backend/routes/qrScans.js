@@ -223,7 +223,7 @@ router.get('/coverage', async (req, res) => {
       if (!byAssignment.has(key)) byAssignment.set(key, new Map());
       const bySubPlace = byAssignment.get(key);
       if (!bySubPlace.has(scan.scannedSubPlace)) bySubPlace.set(scan.scannedSubPlace, []);
-      bySubPlace.get(scan.scannedSubPlace).push(scan.scannedAt);
+      bySubPlace.get(scan.scannedSubPlace).push(scan);
     }
 
     const data = assignments.map((a) => {
@@ -236,8 +236,21 @@ router.get('/coverage', async (req, res) => {
         dutyDate: a.dutyDate,
         status: dutyStatus(a.dutyDate),
         subPlaces: a.subPlaces.map((name) => {
-          const scanTimes = bySubPlace.get(name) || [];
-          return { name, scanned: scanTimes.length > 0, scans: scanTimes };
+          const subScans = bySubPlace.get(name) || [];
+          return {
+            name,
+            scanned: subScans.length > 0,
+            // Just the timestamps (what older clients already read)...
+            scans: subScans.map((x) => x.scannedAt),
+            // ...and the same scans, in the same order, with where the phone
+            // was at the time. latitude/longitude are null for a scan saved
+            // without a GPS fix.
+            scanDetails: subScans.map((x) => ({
+              scannedAt: x.scannedAt,
+              latitude: x.latitude ?? null,
+              longitude: x.longitude ?? null,
+            })),
+          };
         }),
       };
     });
