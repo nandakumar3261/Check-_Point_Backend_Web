@@ -487,6 +487,42 @@ pdfBtn.addEventListener('click', () => {
       });
     }
 
+    // "16.98910", or a dash when there's no position for that scan.
+    function formatCoord(v) {
+      return v === null ? '—' : v.toFixed(5);
+    }
+
+    // Small inline icons for the status pill / timeline / geo chips (same
+    // set the admin dashboard's Recent QR Scans table uses).
+    const SVG_ATTRS = 'viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
+    const ICON_CHECK = `<svg ${SVG_ATTRS}><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>`;
+    const ICON_PENDING = `<svg ${SVG_ATTRS}><circle cx="12" cy="12" r="8"/></svg>`;
+    const ICON_CLOCK = `<svg ${SVG_ATTRS}><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>`;
+    const ICON_CHECK_CIRCLE = `<svg ${SVG_ATTRS}><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/></svg>`;
+    const ICON_PIN = '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 4.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5z"/></svg>';
+
+    // One chip per scan in a fixed-height slot, so the Scanned At and
+    // Geo-Coordinates cells of a sub place line up with each other row by row.
+    function scanSlotsHtml(sub, chipFor) {
+      if (!sub.scanned || !sub.scans.length) return '<span class="scan-none">—</span>';
+      return sub.scans.map(sc => `<div class="scan-slot">${chipFor(sc)}</div>`).join('');
+    }
+
+    // Timeline: a green tick on a scan whose latitude/longitude were captured,
+    // a plain clock on one that was saved without a GPS fix.
+    function timelineChipHtml(sc) {
+      const located = sc.latitude !== null && sc.longitude !== null;
+      return `<span class="scan-chip${located ? ' is-located' : ''}">${located ? ICON_CHECK_CIRCLE : ICON_CLOCK}${fmtDateTime(sc.at)}</span>`;
+    }
+
+    // "16.98158, 82.24340" in a pin chip that opens that exact spot on the map
+    // in a new tab; a scan saved without a GPS fix just shows a dash.
+    function geoChipHtml(sc) {
+      if (sc.latitude === null || sc.longitude === null) return '<span class="scan-none">—</span>';
+      const url = `https://www.google.com/maps?q=${sc.latitude},${sc.longitude}`;
+      return `<a class="scan-chip geo-chip" href="${url}" target="_blank" rel="noopener noreferrer" title="Open this location on the map">${ICON_PIN}${formatCoord(sc.latitude)}, ${formatCoord(sc.longitude)}</a>`;
+    }
+
     // One serial number per duty (Main Place + Duty Date Range, merged cells),
     // with EVERY sub place assigned to the guard numbered underneath, each
     // marked Scanned / Not scanned and every scan time stacked in its Scanned
@@ -494,11 +530,19 @@ pdfBtn.addEventListener('click', () => {
     function groupLogRows(duties) {
       const rows = [];
       duties.forEach((g, gi) => {
-        const subs = (g.subPlaces || []).map(sp => ({
-          name: sp.name,
-          scanned: !!sp.scanned,
-          times: (sp.scans || []).slice().sort((x, y) => new Date(x) - new Date(y)),
-        }));
+        const subs = (g.subPlaces || []).map(sp => {
+          // scanDetails = every scan with where the phone was (latitude /
+          // longitude, null when saved without a GPS fix). An older backend
+          // only sends scans (timestamps), so fall back to those with no
+          // location rather than showing nothing. Same shape the admin
+          // dashboard's Recent QR Scans table reads.
+          const toCoord = v => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) ? null : Number(v));
+          const scans = Array.isArray(sp.scanDetails)
+            ? sp.scanDetails.map(d => ({ at: d.scannedAt, latitude: toCoord(d.latitude), longitude: toCoord(d.longitude) }))
+            : (sp.scans || []).map(at => ({ at, latitude: null, longitude: null }));
+          scans.sort((x, y) => (Date.parse(x.at) || 0) - (Date.parse(y.at) || 0));
+          return { name: sp.name, scanned: !!sp.scanned, scans };
+        });
         subs.forEach((sub, i) => rows.push({ group: g, groupIndex: gi + 1, span: subs.length, first: i === 0, subIndex: i + 1, sub }));
       });
       return rows;
@@ -517,20 +561,21 @@ pdfBtn.addEventListener('click', () => {
         return `<tr${zebra}>${merged}
           <td class="serial-col">${r.subIndex}</td>
           <td class="preserve-space">${esc(r.sub.name)}</td>
-          <td style="white-space:nowrap;"><span class="badge ${r.sub.scanned ? 'badge-success' : 'badge-neutral'}">${r.sub.scanned ? 'Scanned' : 'Not scanned'}</span></td>
-          <td style="white-space:nowrap;">${r.sub.scanned ? r.sub.times.map(fmtDateTime).join('<br>') : '—'}</td>
+          <td class="status-col"><span class="status-pill ${r.sub.scanned ? 'is-scanned' : 'is-pending'}">${r.sub.scanned ? ICON_CHECK : ICON_PENDING}${r.sub.scanned ? 'Scanned' : 'Not scanned'}</span></td>
+          <td>${scanSlotsHtml(r.sub, timelineChipHtml)}</td>
+          <td>${scanSlotsHtml(r.sub, geoChipHtml)}</td>
         </tr>`;
       }).join('');
 
       return `
-        <table class="recent-scans-table" style="min-width:1020px;">
+        <table class="recent-scans-table" style="min-width:1290px;">
           <colgroup>
             <col style="width:56px;"><col style="width:190px;"><col style="width:190px;">
-            <col style="width:64px;"><col style="width:240px;"><col style="width:130px;"><col style="width:170px;">
+            <col style="width:64px;"><col style="width:220px;"><col style="width:150px;"><col style="width:220px;"><col style="width:200px;">
           </colgroup>
           <thead><tr>
             <th class="serial-col">#</th><th>Main Place</th><th>Duty Date Range</th>
-            <th class="serial-col">Sub #</th><th>Sub Place</th><th>Status</th><th>Scanned At</th>
+            <th class="serial-col">Sub #</th><th>Sub Place</th><th class="status-col">Status</th><th>Scanned At (Timeline)</th><th>Geo-Coordinates</th>
           </tr></thead>
           <tbody>${body}</tbody>
         </table>`;
@@ -623,7 +668,9 @@ pdfBtn.addEventListener('click', () => {
         row.push(String(r.subIndex));
         row.push(r.sub.name);
         row.push(r.sub.scanned ? 'Scanned' : 'Not scanned');
-        row.push(r.sub.scanned ? r.sub.times.map(fmtDateTime).join('\n') : '-');
+        const pdfLines = pick => (r.sub.scanned && r.sub.scans.length ? r.sub.scans.map(pick).join('\n') : '-');
+        row.push(pdfLines(sc => fmtDateTime(sc.at)));
+        row.push(pdfLines(sc => (sc.latitude === null || sc.longitude === null ? '-' : `${formatCoord(sc.latitude)}, ${formatCoord(sc.longitude)}`)));
         return row;
       });
 
@@ -637,10 +684,12 @@ pdfBtn.addEventListener('click', () => {
       doc.autoTable({
         startY: 26,
         theme: 'grid',
-        head: [['#', 'Main Place', 'Duty Date Range', 'Sub #', 'Sub Place', 'Status', 'Scanned At']],
+        head: [['#', 'Main Place', 'Duty Date Range', 'Sub #', 'Sub Place', 'Status', 'Scanned At (Timeline)', 'Geo-Coordinates']],
         body,
         styles: { fontSize: 8, lineWidth: 0.1, lineColor: [38, 56, 90] },
         headStyles: { fillColor: [18, 33, 58] },
+        // keep the time and coordinates on one line each (no wrapping mid-value)
+        columnStyles: { 6: { cellWidth: 'wrap' }, 7: { cellWidth: 'wrap' } },
       });
       doc.save(`logs_${user.roll_no}_${loaded.byDate ? loaded.date : 'all'}.pdf`);
     });

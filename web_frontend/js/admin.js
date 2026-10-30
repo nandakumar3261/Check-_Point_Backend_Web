@@ -163,12 +163,13 @@ const renderers = {
             <col style="width:170px;">
             <col style="width:64px;">
             <col style="width:260px;">
-            <col style="width:120px;">
-            <col style="width:170px;">
+            <col style="width:140px;">
+            <col style="width:215px;">
+            <col style="width:215px;">
           </colgroup>
-          <thead><tr><th class="serial-col">#</th><th>Guard</th><th>Main Place</th><th class="serial-col">Sub #</th><th>Sub Place</th><th>Status</th><th>Scanned At</th></tr></thead>
+          <thead><tr><th class="serial-col">#</th><th>Guard</th><th>Main Place</th><th class="serial-col">Sub #</th><th>Sub Place</th><th class="status-col">Status</th><th>Scanned At (Timeline)</th><th>Geo-Coordinates</th></tr></thead>
           <tbody id="recentScansBody">
-            <tr><td colspan="7" style="color:var(--ink-500); font-size:13px;">Loading from MongoDB...</td></tr>
+            <tr><td colspan="8" style="color:var(--ink-500); font-size:13px;">Loading from MongoDB...</td></tr>
           </tbody>
         </table>
       </div>
@@ -587,17 +588,67 @@ function attachHandlers(section) {
     // table shows everything at a glance with no tap needed to drill into a guard.
     const recentScansState = { date: todayISODate(), rows: [], search: '', status: 'all', page: 1, limit: 10 };
 
+    // Every scan of one sub place, oldest first, each with where it was made.
+    // The coverage response carries scanDetails: [{ scannedAt, latitude,
+    // longitude }] (the position is missing for a scan saved without a GPS
+    // fix); if the server only sends bare timestamps in `scans`, the times
+    // still show and the position columns just read "—".
+    function normalizeScanList(sp) {
+      const toCoord = v => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) ? null : Number(v));
+      const list = Array.isArray(sp.scanDetails)
+        ? sp.scanDetails.map(d => ({ at: d.scannedAt, latitude: toCoord(d.latitude), longitude: toCoord(d.longitude) }))
+        : (sp.scans || []).map(t => ({ at: t, latitude: null, longitude: null }));
+      return list.sort((a, b) => (Date.parse(a.at) || 0) - (Date.parse(b.at) || 0));
+    }
+
+    // "16.98910", or "—" when there's no position for that scan.
+    function formatCoord(v) {
+      return v === null ? '—' : v.toFixed(5);
+    }
+
+    // Small inline icons for the status pill / timeline / geo chips.
+    const SVG_ATTRS = 'viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
+    const ICON_CHECK = `<svg ${SVG_ATTRS}><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>`;
+    const ICON_PENDING = `<svg ${SVG_ATTRS}><circle cx="12" cy="12" r="8"/></svg>`;
+    const ICON_CLOCK = `<svg ${SVG_ATTRS}><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>`;
+    const ICON_CHECK_CIRCLE = `<svg ${SVG_ATTRS}><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/></svg>`;
+    const ICON_PIN = '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 4.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5z"/></svg>';
+
+    // One chip per scan in a fixed-height slot, so the Scanned At and
+    // Geo-Coordinates cells of a sub place line up with each other row by row.
+    function scanSlotsHtml(r, chipFor) {
+      if (!r.scanned || !r.scanList.length) return '<span class="scan-none">—</span>';
+      return r.scanList.map(sc => `<div class="scan-slot">${chipFor(sc)}</div>`).join('');
+    }
+
+    // Timeline: a green tick on a scan whose latitude/longitude were captured,
+    // a plain clock on one that was saved without a GPS fix.
+    function timelineChipHtml(sc) {
+      const located = sc.latitude !== null && sc.longitude !== null;
+      return `<span class="scan-chip${located ? ' is-located' : ''}">${located ? ICON_CHECK_CIRCLE : ICON_CLOCK}${formatDateTime(sc.at)}</span>`;
+    }
+
+    // "16.98158, 82.24340" in a pin chip that opens that exact spot on the map
+    // in a new tab; a scan saved without a GPS fix just shows "—".
+    function geoChipHtml(sc) {
+      if (sc.latitude === null || sc.longitude === null) return '<span class="scan-none">—</span>';
+      const url = `https://www.google.com/maps?q=${sc.latitude},${sc.longitude}`;
+      return `<a class="scan-chip geo-chip" href="${url}" target="_blank" rel="noopener noreferrer" title="Open this location on the map">${ICON_PIN}${formatCoord(sc.latitude)}, ${formatCoord(sc.longitude)}</a>`;
+    }
+
     function flattenRecentScansCoverage(guards) {
       const rows = [];
       guards.forEach(g => {
         g.subPlaces.forEach(sp => {
+          const scanList = normalizeScanList(sp);
           rows.push({
             guardName: g.guardName,
             guardEmpId: g.guardEmpId,
             mainPlace: g.mainPlace,
             subPlace: sp.name,
             scanned: sp.scanned,
-            scans: sp.scans,
+            scans: scanList.map(sc => sc.at),
+            scanList,
           });
         });
       });
@@ -655,7 +706,7 @@ function attachHandlers(section) {
       const filtered = recentScansState.rows.filter(matchesRecentScansFilters);
       if (!filtered.length) {
         const msg = recentScansState.rows.length ? 'No scans match your search/filter.' : 'No duty assigned for this date.';
-        body.innerHTML = `<tr><td colspan="7" style="color:var(--ink-500); font-size:13px;">${msg}</td></tr>`;
+        body.innerHTML = `<tr><td colspan="8" style="color:var(--ink-500); font-size:13px;">${msg}</td></tr>`;
         updateRecentScansPager(0, 1);
         return;
       }
@@ -712,8 +763,9 @@ function attachHandlers(section) {
 
         html.push(`<td class="serial-col">${r.subIndex}</td>`);
         html.push(`<td class="preserve-space">${r.subPlace}</td>`);
-        html.push(`<td><span class="badge ${r.scanned ? 'badge-success' : 'badge-neutral'}">${r.scanned ? 'Scanned' : 'Not scanned'}</span></td>`);
-        html.push(`<td style="white-space:nowrap;">${r.scanned ? r.scans.map(t => formatDateTime(t)).join('<br>') : '—'}</td>`);
+        html.push(`<td class="status-col"><span class="status-pill ${r.scanned ? 'is-scanned' : 'is-pending'}">${r.scanned ? ICON_CHECK : ICON_PENDING}${r.scanned ? 'Scanned' : 'Not scanned'}</span></td>`);
+        html.push(`<td>${scanSlotsHtml(r, timelineChipHtml)}</td>`);
+        html.push(`<td>${scanSlotsHtml(r, geoChipHtml)}</td>`);
         html.push('</tr>');
       }
       body.innerHTML = html.join('');
@@ -737,7 +789,7 @@ function attachHandlers(section) {
     function loadRecentScans(date) {
       updateRecentScansHeading(date);
       document.getElementById('recentScansBody').innerHTML =
-        '<tr><td colspan="7" style="color:var(--ink-500); font-size:13px;">Loading from MongoDB...</td></tr>';
+        '<tr><td colspan="8" style="color:var(--ink-500); font-size:13px;">Loading from MongoDB...</td></tr>';
       updateRecentScansPager(0, 1);
 
       fetchQrScanCoverageViaApi({ date })
@@ -747,7 +799,7 @@ function attachHandlers(section) {
         })
         .catch(err => {
           document.getElementById('recentScansBody').innerHTML =
-            `<tr><td colspan="7" style="color:var(--danger); font-size:13px;">Could not load from MongoDB: ${err.message}</td></tr>`;
+            `<tr><td colspan="8" style="color:var(--danger); font-size:13px;">Could not load from MongoDB: ${err.message}</td></tr>`;
           updateRecentScansPager(0, 1);
         });
     }
@@ -837,7 +889,9 @@ function attachHandlers(section) {
         row.push(String(r.subIndex));
         row.push(r.subPlace);
         row.push(r.scanned ? 'Scanned' : 'Not scanned');
-        row.push(r.scanned ? r.scans.map(t => formatDateTime(t)).join('\n') : '—');
+        const pdfLines = pick => (r.scanned && r.scanList.length ? r.scanList.map(pick).join('\n') : '—');
+        row.push(pdfLines(sc => formatDateTime(sc.at)));
+        row.push(pdfLines(sc => (sc.latitude === null || sc.longitude === null ? '—' : `${formatCoord(sc.latitude)}, ${formatCoord(sc.longitude)}`)));
         body.push(row);
       }
 
@@ -847,10 +901,12 @@ function attachHandlers(section) {
       doc.autoTable({
         startY: 22,
         theme: 'grid',
-        head: [['#', 'Guard', 'Main Place', 'Sub #', 'Sub Place', 'Status', 'Scanned At']],
+        head: [['#', 'Guard', 'Main Place', 'Sub #', 'Sub Place', 'Status', 'Scanned At (Timeline)', 'Geo-Coordinates']],
         body,
         styles: { fontSize: 8, lineWidth: 0.1, lineColor: [38, 56, 90] },
         headStyles: { fillColor: [18, 33, 58] },
+        // keep the time and coordinates on one line each (no wrapping mid-value)
+        columnStyles: { 6: { cellWidth: 'wrap' }, 7: { cellWidth: 'wrap' } },
       });
       doc.save(`qr_scans_${recentScansState.date}.pdf`);
     });
