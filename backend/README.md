@@ -47,3 +47,13 @@ and config file is byte-for-byte identical.
   updated the header comment and the startup log text ("backend API running").
 - `package.json`: `name` / `description` only.
 - Not copied (web only): `public/` HTML, CSS and JS.
+
+
+## Scan location (latitude / longitude)
+
+`POST /api/qr-scans` accepts two optional extra fields, `latitude` and
+`longitude` (the phone's GPS position at the moment of scanning, sent by the
+Flutter app). They are stored on the `QrScan` document and returned with it.
+Both must be present, numeric, and in range (lat -90..90, lng -180..180);
+otherwise they are silently dropped and the scan is still saved without a
+location - attendance is never blocked by missing GPS.

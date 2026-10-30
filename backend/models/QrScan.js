@@ -22,6 +22,14 @@ const QrScanSchema = new Schema(
     scannedSubPlace: { type: String, required: true, trim: true },
     dateRange: { type: String, required: true },
     scannedAt: { type: Date, required: true, default: Date.now },
+    // Device GPS coordinates captured on the phone at the moment of
+    // scanning (see lib/services/location_service.dart in the Flutter app).
+    // Both optional - a scan is still saved without them if location
+    // permission was denied, the device's location service was off, or the
+    // fix simply timed out; location is a supplement to attendance, not a
+    // requirement for it.
+    latitude: { type: Number, min: -90, max: 90 },
+    longitude: { type: Number, min: -180, max: 180 },
   },
   { timestamps: true }
 );

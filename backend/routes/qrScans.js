@@ -269,6 +269,21 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'No QR data to submit.' });
     }
 
+    // Optional device GPS coordinates from the phone (OpenStreetMap-style -
+    // raw lat/lng, no Google API key involved). Left out of the saved scan
+    // entirely when missing or out of range, rather than saved as some
+    // placeholder value, so "no location" stays genuinely distinguishable
+    // from "at 0,0".
+    let latitude, longitude;
+    if (req.body.latitude != null && req.body.longitude != null) {
+      const lat = Number(req.body.latitude);
+      const lng = Number(req.body.longitude);
+      if (Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+        latitude = lat;
+        longitude = lng;
+      }
+    }
+
     const scanSetting = await ScanSetting.findOne({});
     if (!isWithinScanWindow(scanSetting)) {
       return res.status(400).json({
@@ -301,6 +316,8 @@ router.post('/', async (req, res) => {
       scannedSubPlace,
       dateRange: assignment.dateRange,
       scannedAt: new Date(),
+      // Only set when the phone sent a valid fix (see above).
+      ...(latitude !== undefined ? { latitude, longitude } : {}),
     });
 
     res.status(201).json(scan);
