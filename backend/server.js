@@ -32,6 +32,7 @@ const path = require('path');
 const connectDB = require('./config/db');
 
 const authRoutes = require('./routes/auth');
+const passwordResetRoutes = require('./routes/passwordReset');
 const userRoutes = require('./routes/users');
 const dutyPlaceRoutes = require('./routes/dutyPlaces');
 const dutyAssignmentRoutes = require('./routes/dutyAssignments');
@@ -47,6 +48,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/api/auth', authRoutes);
+app.use('/api/auth/forgot-password', passwordResetRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/duty-places', dutyPlaceRoutes);
 app.use('/api/duty-assignments', dutyAssignmentRoutes);
