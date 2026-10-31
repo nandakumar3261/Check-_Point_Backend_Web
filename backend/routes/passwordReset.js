@@ -56,7 +56,7 @@ const MAX_PASSWORD_LENGTH = 64; // bcrypt silently ignores everything past 72 by
 // provider needs DLT-approved templates (India), the message has to match an
 // approved one exactly - change it with SMS_OTP_TEMPLATE ({name} and {otp}).
 const DEFAULT_OTP_TEMPLATE =
-  'Dear {name}, Your OTP to reset the password of Check Point app is {otp}. ADITYA UNIVERSITY';
+  'Dear {name}, Your OTP to reset the password of Technical Hub app is {otp}. ADITYA';
 
 if (process.env.SMS_DRY_RUN === 'true') {
   console.warn(
