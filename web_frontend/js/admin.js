@@ -71,6 +71,7 @@ fillAvatar(document.getElementById('avatarInitial'));
 // Sidebar brand slot - shows the logged-in user's own name/initial instead
 // of a static "ADMIN PANEL" label.
 document.getElementById('sidebarUserName').textContent = user ? user.first_name : '';
+document.getElementById('sidebarEmpId').textContent = user ? 'Emp ID: ' + user.roll_no : '';
 fillAvatar(document.getElementById('sidebarAvatar'));
 
 document.querySelectorAll('.nav-link[data-section]').forEach(el => {
@@ -121,12 +122,54 @@ document.getElementById('modalOverlay').addEventListener('click', (e) => {
 
 const renderers = {
   home: () => `
-    ${sectionHead('Welcome back, ' + user.first_name.split(' ')[0], user.designation + ' • Roll No ' + user.roll_no)}
-    <div class="grid-stats">
-      <div class="stat-card"><div class="num" id="guardsCountStat">…</div><div class="label">Guards registered</div></div>
-      <div class="stat-card"><div class="num" id="dutyPlacesCountStat">…</div><div class="label">Main locations</div></div>
-      <div class="stat-card"><div class="num" id="activeSubPlacesStat">…</div><div class="label">Sub places</div></div>
-      <div class="stat-card"><div class="num" id="qrScansTodayStat">…</div><div class="label">QR scans today</div></div>
+    <div class="home-hero">
+      <div class="home-hero-logo"><img src="images/check_point_logo.png" alt="Check Point"></div>
+      <div class="home-hero-text">
+        <h2>Aditya Security Guard</h2>
+        <p>Guard duty &amp; QR checkpoint monitoring</p>
+      </div>
+    </div>
+    <div class="dash-stats">
+      <div class="dash-card">
+        <div class="dash-num" id="guardsCountStat">…</div>
+        <div class="dash-text">
+          <span class="dash-label">Guards Registered</span>
+          <div class="dash-sub"><b class="ok">Active roster</b> enrolled</div>
+        </div>
+        <span class="dash-icon tone-amber"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg></span>
+      </div>
+      <div class="dash-card">
+        <div class="dash-num" id="dutyPlacesCountStat">…</div>
+        <div class="dash-text">
+          <span class="dash-label">Main Locations</span>
+          <div class="dash-sub">Campus sectors monitored</div>
+        </div>
+        <span class="dash-icon tone-blue"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 7h2M13 7h2M9 11h2M13 11h2M10 21v-4h4v4"/></svg></span>
+      </div>
+      <div class="dash-card">
+        <div class="dash-num" id="activeSubPlacesStat">…</div>
+        <div class="dash-text">
+          <span class="dash-label">Sub Places</span>
+          <div class="dash-sub">Designated checkpoints</div>
+        </div>
+        <span class="dash-icon tone-purple"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6-5.6-6-10.5a6 6 0 0112 0C18 15.4 12 21 12 21z"/><circle cx="12" cy="10.5" r="2.2"/></svg></span>
+      </div>
+      <div class="dash-card">
+        <div class="dash-num" id="qrScansTodayStat">…</div>
+        <div class="dash-text">
+          <span class="dash-label">QR Scans Today</span>
+          <div class="dash-sub" id="qrScansTodayNote">Shift awaiting initial scan</div>
+        </div>
+        <span class="dash-icon tone-amber"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V5a1 1 0 011-1h3M16 4h3a1 1 0 011 1v3M20 16v3a1 1 0 01-1 1h-3M8 20H5a1 1 0 01-1-1v-3"/><path d="M8 12h8"/></svg></span>
+      </div>
+      <div class="dash-card">
+        <div class="dash-num" id="todayDutiesStat">…</div>
+        <div class="dash-text">
+          <span class="dash-label">Today's Assigned Duties</span>
+          <div class="dash-sub" id="todayDutiesNote">Guards on duty today</div>
+        </div>
+        <span class="dash-icon tone-green"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9zM9 14l2 2 4-4"/></svg></span>
+      </div>
     </div>
     <div class="card">
       <div class="card-title" style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
@@ -582,8 +625,21 @@ function attachHandlers(section) {
       });
 
     fetchQrScansViaApi({ date: todayISODate(), limit: 1 })
-      .then(res => { document.getElementById('qrScansTodayStat').textContent = res.total; })
+      .then(res => {
+        document.getElementById('qrScansTodayStat').textContent = res.total;
+        document.getElementById('qrScansTodayNote').textContent =
+          res.total > 0 ? 'Scans recorded today' : 'Shift awaiting initial scan';
+      })
       .catch(() => { document.getElementById('qrScansTodayStat').textContent = '—'; });
+
+    // Duties assigned for today's date (GET /api/duty-assignments?date=today).
+    fetchDutyAssignmentsViaApi({ date: todayISODate(), limit: 1 })
+      .then(res => {
+        document.getElementById('todayDutiesStat').textContent = res.total;
+        document.getElementById('todayDutiesNote').textContent =
+          res.total > 0 ? 'Guards on duty today' : 'No duties assigned yet';
+      })
+      .catch(() => { document.getElementById('todayDutiesStat').textContent = '—'; });
 
     // ---------- Recent QR scans: date-scoped table with search + status filter ----------
     // rows are the per-guard coverage data flattened to one row per sub place, so the
