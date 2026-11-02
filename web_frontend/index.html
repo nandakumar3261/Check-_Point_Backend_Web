@@ -42,6 +42,11 @@
           <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" />
         </div>
         <div class="error-text" id="errorText"></div>
+
+        <div class="forgot-row">
+          <button type="button" class="forgot-link" id="forgotPasswordLink">Forgot Password?</button>
+        </div>
+
         <button type="submit" class="btn btn-primary">Log in</button>
       </form>
 
@@ -50,6 +55,78 @@
         Create the first one directly in MongoDB (mongosh) — see the "Creating the first admin user" section in README.md. After that, use the admin's "Add Security" page to create every other login.
       </div>
     </div>
+  </div>
+</div>
+
+<!-- Forgot Password popup: roll no -> OTP -> new password, all on this same page. -->
+<div class="modal-overlay" id="fpOverlay" style="display:none;">
+  <div class="modal-box" id="fpBox">
+    <h3>Reset your password</h3>
+
+    <div class="fp-steps">
+      <div class="fp-step" id="fpStepBar1"></div>
+      <div class="fp-step" id="fpStepBar2"></div>
+      <div class="fp-step" id="fpStepBar3"></div>
+    </div>
+
+    <!-- Step 1: Roll No -->
+    <div id="fpStep1">
+      <p class="fp-hint">Enter your roll number and we'll send a one-time code to your registered mobile number.</p>
+      <div class="field">
+        <label for="fpRollNo">Roll No</label>
+        <input id="fpRollNo" type="text" autocomplete="off" placeholder="e.g. 2758" />
+      </div>
+      <div class="error-text" id="fpStep1Error"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline" id="fpCancelBtn1" style="width:auto;">Cancel</button>
+        <button type="button" class="btn btn-primary" id="fpSendOtpBtn" style="width:auto;">Send OTP</button>
+      </div>
+    </div>
+
+    <!-- Step 2: OTP -->
+    <div id="fpStep2" style="display:none;">
+      <p class="fp-hint" id="fpOtpHint">Enter the code sent to your registered mobile number.</p>
+      <div class="field">
+        <label for="fpOtp">OTP Code</label>
+        <input id="fpOtp" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="Enter code" />
+      </div>
+      <div class="fp-resend-row">
+        <span id="fpResendText"></span>
+        <button type="button" class="fp-resend-link" id="fpResendBtn" disabled>Resend code</button>
+      </div>
+      <div class="error-text" id="fpStep2Error"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline" id="fpBackBtn2" style="width:auto;">Back</button>
+        <button type="button" class="btn btn-primary" id="fpVerifyOtpBtn" style="width:auto;">Verify OTP</button>
+      </div>
+    </div>
+
+    <!-- Step 3: New password -->
+    <div id="fpStep3" style="display:none;">
+      <p class="fp-hint">Choose a new password for your account.</p>
+      <div class="field">
+        <label for="fpNewPassword">New Password</label>
+        <input id="fpNewPassword" type="password" autocomplete="new-password" placeholder="••••••••" />
+      </div>
+      <div class="field">
+        <label for="fpConfirmPassword">Confirm Password</label>
+        <input id="fpConfirmPassword" type="password" autocomplete="new-password" placeholder="••••••••" />
+      </div>
+      <div class="error-text" id="fpStep3Error"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline" id="fpCancelBtn3" style="width:auto;">Cancel</button>
+        <button type="button" class="btn btn-primary" id="fpResetBtn" style="width:auto;">Reset Password</button>
+      </div>
+    </div>
+
+    <!-- Step 4: Success -->
+    <div id="fpStep4" style="display:none;">
+      <p class="fp-success-text" style="font-size:14px; min-height:0;">Your password has been reset. You can now log in with your new password.</p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-primary" id="fpDoneBtn" style="width:auto;">Back to Login</button>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -83,6 +160,194 @@
       submitBtn.textContent = 'Log in';
     }
   });
+</script>
+
+<script>
+  // ---------- Forgot Password popup ----------
+  (function () {
+    const overlay = document.getElementById('fpOverlay');
+    const stepEls = [null, document.getElementById('fpStep1'), document.getElementById('fpStep2'), document.getElementById('fpStep3'), document.getElementById('fpStep4')];
+    const stepBars = [null, document.getElementById('fpStepBar1'), document.getElementById('fpStepBar2'), document.getElementById('fpStepBar3')];
+
+    let fpRollNo = '';
+    let fpResetToken = '';
+    let resendTimer = null;
+    let resendSecondsLeft = 0;
+
+    function showFpStep(n) {
+      for (let i = 1; i <= 4; i++) stepEls[i].style.display = i === n ? 'block' : 'none';
+      for (let i = 1; i <= 3; i++) {
+        stepBars[i].classList.toggle('is-active', i === n);
+        stepBars[i].classList.toggle('is-done', i < n);
+      }
+    }
+
+    function clearErrors() {
+      document.getElementById('fpStep1Error').textContent = '';
+      document.getElementById('fpStep2Error').textContent = '';
+      document.getElementById('fpStep3Error').textContent = '';
+    }
+
+    function stopResendTimer() {
+      if (resendTimer) { clearInterval(resendTimer); resendTimer = null; }
+    }
+
+    function startResendTimer(seconds) {
+      stopResendTimer();
+      resendSecondsLeft = Math.max(0, Math.floor(seconds || 0));
+      const resendBtn = document.getElementById('fpResendBtn');
+      const resendText = document.getElementById('fpResendText');
+      resendBtn.disabled = true;
+
+      function tick() {
+        if (resendSecondsLeft <= 0) {
+          stopResendTimer();
+          resendText.textContent = "Didn't get a code?";
+          resendBtn.disabled = false;
+          return;
+        }
+        resendText.textContent = `Resend code in ${resendSecondsLeft}s`;
+        resendSecondsLeft -= 1;
+      }
+      tick();
+      resendTimer = setInterval(tick, 1000);
+    }
+
+    function openForgotModal() {
+      fpRollNo = '';
+      fpResetToken = '';
+      clearErrors();
+      document.getElementById('fpRollNo').value = document.getElementById('rollNo').value.trim();
+      document.getElementById('fpOtp').value = '';
+      document.getElementById('fpNewPassword').value = '';
+      document.getElementById('fpConfirmPassword').value = '';
+      showFpStep(1);
+      overlay.style.display = 'flex';
+      document.getElementById('fpRollNo').focus();
+    }
+
+    function closeForgotModal() {
+      overlay.style.display = 'none';
+      stopResendTimer();
+    }
+
+    document.getElementById('forgotPasswordLink').addEventListener('click', openForgotModal);
+    overlay.addEventListener('click', (e) => { if (e.target.id === 'fpOverlay') closeForgotModal(); });
+    document.getElementById('fpCancelBtn1').addEventListener('click', closeForgotModal);
+    document.getElementById('fpCancelBtn3').addEventListener('click', closeForgotModal);
+    document.getElementById('fpBackBtn2').addEventListener('click', () => { clearErrors(); showFpStep(1); });
+    document.getElementById('fpDoneBtn').addEventListener('click', () => {
+      closeForgotModal();
+      document.getElementById('rollNo').value = fpRollNo;
+      document.getElementById('password').focus();
+    });
+
+    document.getElementById('fpSendOtpBtn').addEventListener('click', async function () {
+      const btn = this;
+      const errBox = document.getElementById('fpStep1Error');
+      const rollNo = document.getElementById('fpRollNo').value.trim();
+      errBox.textContent = '';
+
+      if (!rollNo) {
+        errBox.textContent = 'Please enter your roll number.';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Sending...';
+      try {
+        const result = await sendForgotPasswordOtpViaApi(rollNo);
+        fpRollNo = rollNo;
+        const hint = document.getElementById('fpOtpHint');
+        hint.textContent = result.mobile
+          ? `Enter the code sent to ${result.mobile}.`
+          : 'Enter the code sent to your registered mobile number.';
+        document.getElementById('fpOtp').value = '';
+        clearErrors();
+        showFpStep(2);
+        startResendTimer(result.resend_in || 30);
+        document.getElementById('fpOtp').focus();
+      } catch (err) {
+        errBox.textContent = err.message || 'Could not send OTP. Please check the roll number and try again.';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Send OTP';
+      }
+    });
+
+    document.getElementById('fpResendBtn').addEventListener('click', async function () {
+      const btn = this;
+      const errBox = document.getElementById('fpStep2Error');
+      errBox.textContent = '';
+      btn.disabled = true;
+      try {
+        const result = await sendForgotPasswordOtpViaApi(fpRollNo);
+        document.getElementById('fpOtp').value = '';
+        startResendTimer(result.resend_in || 30);
+      } catch (err) {
+        errBox.textContent = err.message || 'Could not resend OTP. Please try again.';
+        document.getElementById('fpResendText').textContent = '';
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById('fpVerifyOtpBtn').addEventListener('click', async function () {
+      const btn = this;
+      const errBox = document.getElementById('fpStep2Error');
+      const otp = document.getElementById('fpOtp').value.trim();
+      errBox.textContent = '';
+
+      if (!otp) {
+        errBox.textContent = 'Please enter the OTP sent to your mobile.';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Verifying...';
+      try {
+        const result = await verifyForgotPasswordOtpViaApi(fpRollNo, otp);
+        fpResetToken = result.reset_token;
+        clearErrors();
+        showFpStep(3);
+        document.getElementById('fpNewPassword').focus();
+      } catch (err) {
+        errBox.textContent = err.message || 'Invalid or expired OTP. Please try again.';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Verify OTP';
+      }
+    });
+
+    document.getElementById('fpResetBtn').addEventListener('click', async function () {
+      const btn = this;
+      const errBox = document.getElementById('fpStep3Error');
+      const newPassword = document.getElementById('fpNewPassword').value;
+      const confirmPassword = document.getElementById('fpConfirmPassword').value;
+      errBox.textContent = '';
+
+      if (!newPassword || !confirmPassword) {
+        errBox.textContent = 'Please fill out both password fields.';
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        errBox.textContent = 'Passwords do not match.';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Resetting...';
+      try {
+        await resetForgotPasswordViaApi(fpRollNo, fpResetToken, newPassword, confirmPassword);
+        stopResendTimer();
+        showFpStep(4);
+      } catch (err) {
+        errBox.textContent = err.message || 'Could not reset password. Please try again.';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Reset Password';
+      }
+    });
+  })();
 </script>
 </body>
 </html>

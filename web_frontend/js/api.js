@@ -360,3 +360,36 @@ async function saveScanTimeViaApi(from, to) {
   });
   return readJsonResponse(res); // { from, to }
 }
+
+/**
+ * Forgot password (see routes/auth.js). Three steps:
+ *  1. sendForgotPasswordOtpViaApi(roll_no)              -> { message, mobile, resend_in, expires_in }
+ *  2. verifyForgotPasswordOtpViaApi(roll_no, otp)       -> { message, reset_token, expires_in }
+ *  3. resetForgotPasswordViaApi(roll_no, reset_token, new_password, confirm_password) -> { message }
+ */
+async function sendForgotPasswordOtpViaApi(roll_no) {
+  const res = await fetch('/api/auth/forgot-password/send-otp', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ roll_no }),
+  });
+  return readJsonResponse(res);
+}
+
+async function verifyForgotPasswordOtpViaApi(roll_no, otp) {
+  const res = await fetch('/api/auth/forgot-password/verify-otp', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ roll_no, otp }),
+  });
+  return readJsonResponse(res);
+}
+
+async function resetForgotPasswordViaApi(roll_no, reset_token, new_password, confirm_password) {
+  const res = await fetch('/api/auth/forgot-password/reset', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ roll_no, reset_token, new_password, confirm_password }),
+  });
+  return readJsonResponse(res);
+}
