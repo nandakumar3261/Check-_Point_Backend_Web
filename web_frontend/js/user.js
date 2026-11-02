@@ -4,6 +4,8 @@ const titles = {
   home: 'Home',
   images: 'Images',
   logs: 'Logs/Data',
+  profile: 'Profile',
+  changePassword: 'Change Password',
   contact: 'Contact Us',
 };
 
@@ -334,6 +336,35 @@ const renderers = {
     </div>
   `,
 
+  // The guard's own details, laid out like the admin's Profile tab but
+  // read-only: a guard's photo can only be set by an administrator (from the
+  // Security Information tab), so there is deliberately no Change Photo
+  // button here. Read from the stored session at the moment the tab opens
+  // (not the copy captured when the page loaded), so a photo or detail an
+  // admin changed since then shows up - the session check re-syncs it.
+  profile: () => {
+    const u = currentUser() || user;
+    const avatar = u.profile_pic
+      ? `<img src="${esc(u.profile_pic)}" alt="${esc(u.first_name)}">`
+      : esc(String(u.first_name || '').charAt(0));
+    return `
+    ${sectionHead('Profile', 'Your profile details.')}
+    <div class="card" style="max-width:420px; text-align:center;">
+      <div class="avatar" style="width:80px; height:80px; font-size:28px; margin:0 auto 16px;">${avatar}</div>
+      <p style="color:var(--ink-500); font-size:11.5px; margin-bottom:18px;">Your photo is set by an administrator.</p>
+      <table style="text-align:left;">
+        <tr><td style="color:var(--ink-500);">Name</td><td>${esc(u.first_name)}</td></tr>
+        <tr><td style="color:var(--ink-500);">Gender</td><td>${esc(u.gender || '—')}</td></tr>
+        <tr><td style="color:var(--ink-500);">Designation</td><td>${esc(u.designation || '—')}</td></tr>
+        <tr><td style="color:var(--ink-500);">Roll No</td><td>${esc(u.roll_no)}</td></tr>
+        <tr><td style="color:var(--ink-500);">Mobile</td><td>${esc(u.mobile || '—')}</td></tr>
+      </table>
+    </div>
+  `;
+  },
+
+  changePassword: () => changePasswordSectionHtml(sectionHead),
+
   contact: () => `
     ${sectionHead('Contact Us', 'Reach the support team for help with the app.')}
     <div class="card" style="max-width:420px;">
@@ -347,6 +378,10 @@ const renderers = {
 function attachHandlers(section) {
   const retry = document.getElementById('retryDutiesBtn');
   if (retry) retry.addEventListener('click', () => render(section));
+
+  if (section === 'changePassword') {
+    attachChangePasswordHandlers(user);
+  }
 
   if (section === 'home') {
     const sizeSel = document.getElementById('dutyPageSize');

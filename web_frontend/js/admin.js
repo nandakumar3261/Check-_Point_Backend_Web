@@ -536,7 +536,7 @@ const renderers = {
   `,
 
   profile: () => `
-    ${sectionHead('Update Profile Pic', 'View your profile details and update your photo.')}
+    ${sectionHead('Profile', 'View your profile details and update your photo.')}
     <div class="card" style="max-width:420px; text-align:center;">
       <div class="avatar" id="profileAvatar" style="width:80px; height:80px; font-size:28px; margin:0 auto 16px;">${user.first_name.charAt(0)}</div>
       <input type="file" id="profilePicInput" accept=".jpg,.jpeg,.png,image/jpeg,image/png" style="display:none;">
@@ -552,6 +552,8 @@ const renderers = {
       </table>
     </div>
   `,
+
+  changePassword: () => changePasswordSectionHtml(sectionHead),
 
   contact: () => `
     ${sectionHead('Contact Us', 'Reach the support team for help with the app.')}
@@ -1376,7 +1378,7 @@ function attachHandlers(section) {
 
     // ---- Optional profile pic on the "New account" form ----
     // jpg/png only, max 2 MB, must decode as a real image - same rules as
-    // the Update Profile Pic tab. Purely optional: if nothing is picked, the
+    // the Profile tab. Purely optional: if nothing is picked, the
     // account is created with no photo, exactly like before. Not offered for
     // the CSV bulk upload below - that stays text-only, unchanged.
     const ALLOWED_PIC_TYPES = ['image/jpeg', 'image/png'];
@@ -1459,8 +1461,8 @@ function attachHandlers(section) {
 
         // The photo is a second, independent request against the account
         // we just created - if it fails, the account still exists, it's
-        // just left without a photo for now (the admin can add one later
-        // from that guard's own Update Profile Pic screen).
+        // just left without a photo for now (the admin can add one later by
+        // clicking that guard's photo in the Security Information tab).
         if (newGuardPicFile) {
           try {
             const { profile_pic } = await uploadProfilePicViaApi(saved.roll_no, newGuardPicFile);
@@ -1636,7 +1638,7 @@ function attachHandlers(section) {
     }
 
     // Photo upload/change - same validated-file flow as the admin's own
-    // "Update Profile Pic" tab (type/extension check, size check, then a
+    // "Profile" tab (type/extension check, size check, then a
     // decode probe before it's ever sent), just aimed at whichever guard's
     // row was clicked instead of the logged-in admin.
     function openPhotoModal(u) {
@@ -1777,7 +1779,7 @@ function attachHandlers(section) {
         try {
           await updateUserViaApi(id, payload);
           // Editing your own account: keep the copy saved at login in step,
-          // so your own Update Profile Pic tab shows the new gender.
+          // so your own Profile tab shows the new gender.
           if (u.roll_no === user.roll_no) {
             user.gender = payload.gender;
             setCurrentUser(user);
@@ -3026,9 +3028,13 @@ function attachHandlers(section) {
     });
   }
 
+  if (section === 'changePassword') {
+    attachChangePasswordHandlers(user);
+  }
+
   if (section === 'profile') {
     // ======================================================================
-    // Update Profile Pic - jpg/png only, max 2 MB, and must actually decode
+    // Profile tab (change photo) - jpg/png only, max 2 MB, and must actually decode
     // as an image (same defense-in-depth pattern as the Images tab); the
     // server (routes/users.js, POST /by-roll/:roll_no/profile-pic) re-checks
     // type/size and the real file signature independently.

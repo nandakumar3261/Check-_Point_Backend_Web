@@ -393,3 +393,20 @@ async function resetForgotPasswordViaApi(roll_no, reset_token, new_password, con
   });
   return readJsonResponse(res);
 }
+
+/**
+ * Change password for an already logged-in user - admin OR security
+ * (see POST /api/auth/change-password in routes/auth.js). The current
+ * password is required by the server as proof of identity.
+ *   -> { message }
+ * On a weak password the server's error also carries requirements_not_met,
+ * but the message itself is already user-readable.
+ */
+async function changePasswordViaApi(roll_no, current_password, new_password, confirm_password) {
+  const res = await fetch('/api/auth/change-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ roll_no, current_password, new_password, confirm_password }),
+  });
+  return readJsonResponse(res);
+}
