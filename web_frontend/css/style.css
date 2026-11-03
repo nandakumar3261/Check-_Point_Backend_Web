@@ -128,12 +128,23 @@ a { color: inherit; text-decoration: none; }
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: 100vh;
   padding: 40px;
 }
 
 .login-card {
   width: 100%;
-  max-width: 380px;
+  max-width: 440px;
+  margin: 0 auto;
+  padding: 36px 32px;
+  background: var(--navy-900);
+  border: 1px solid var(--navy-line);
+  border-radius: 16px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+}
+
+@media (max-width: 480px) {
+  .login-card { padding: 28px 20px; }
 }
 
 .login-card h2 {
@@ -280,14 +291,14 @@ a { color: inherit; text-decoration: none; }
 /* ---------- Dashboard shell ---------- */
 .app-shell {
   display: grid;
-  grid-template-columns: 250px 1fr;
+  grid-template-columns: 250px minmax(0, 1fr);
   min-height: 100vh;
 }
 
 @media (max-width: 900px) {
-  .app-shell { grid-template-columns: 1fr; }
+  .app-shell { grid-template-columns: minmax(0, 1fr); }
   .sidebar { display: none; }
-  .sidebar.open { display: block; position: fixed; z-index: 20; height: 100vh; }
+  .sidebar.open { display: flex; position: fixed; z-index: 20; height: 100vh; width: 250px; }
 }
 
 .sidebar {
@@ -347,7 +358,7 @@ a { color: inherit; text-decoration: none; }
 }
 
 .topbar {
-  display: none; /* the sidebar's own header already shows who's signed in on desktop */
+  display: flex;
   height: 64px;
   border-bottom: 1px solid var(--navy-line);
   align-items: center;
@@ -360,9 +371,10 @@ a { color: inherit; text-decoration: none; }
 
 /* Only needed on mobile, where the sidebar (and its own name/avatar) is
    hidden until the hamburger button opens it. */
-@media (max-width: 900px) {
-  .topbar { display: flex; }
-}
+/* Admin: the topbar is always visible (menu button left, theme toggle right).
+   The user/guard page has no menu button, so its topbar stays mobile-only. */
+body:not(.has-topbar) .topbar { display: none; }
+@media (max-width: 900px) { body:not(.has-topbar) .topbar { display: flex; } }
 
 .topbar .who {
   display: flex;
@@ -631,7 +643,7 @@ tr:last-child td { border-bottom: none; }
 .icon-btn:hover { color: var(--danger); border-color: var(--danger); }
 
 .menu-toggle {
-  display: none;
+  display: inline-flex;
   background: transparent;
   border: 1px solid var(--navy-line);
   color: var(--ink-100);
@@ -639,7 +651,7 @@ tr:last-child td { border-bottom: none; }
   padding: 8px 10px;
   cursor: pointer;
 }
-@media (max-width: 900px) { .menu-toggle { display: inline-flex; } }
+.menu-toggle:hover { border-color: var(--amber); color: var(--amber); }
 
 .empty-state {
   text-align: center;
@@ -1237,3 +1249,298 @@ tr:last-child td { border-bottom: none; }
 :root[data-theme="light"] .dash-icon.tone-green  { color: #2f9355; }
 :root[data-theme="light"] .home-hero-logo { box-shadow: 0 0 0 1px var(--navy-line); }
 :root[data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator { filter: none; opacity: 0.7; }
+
+/* ---------- Admin: icons in sidebar, collapsible sidebar, topbar theme toggle ---------- */
+.nav-icon { flex-shrink: 0; opacity: 0.9; }
+.nav-label { white-space: nowrap; }
+.nav-link.active .nav-icon { opacity: 1; }
+
+.app-shell { transition: grid-template-columns 0.2s ease; }
+@media (min-width: 901px) {
+  /* Collapsed = slim icon-only rail (labels hidden); expanded = icons + text */
+  .app-shell.sidebar-collapsed { grid-template-columns: 72px minmax(0, 1fr); }
+  .app-shell.sidebar-collapsed .sidebar { padding: 22px 10px; overflow-x: hidden; }
+  .app-shell.sidebar-collapsed .sidebar .brand { justify-content: center; padding: 4px 0 18px; }
+  .app-shell.sidebar-collapsed .sidebar .brand-text,
+  .app-shell.sidebar-collapsed .sidebar .guard-brand-text,
+  .app-shell.sidebar-collapsed .nav-label { display: none; }
+  .app-shell.sidebar-collapsed .nav-group-label {
+    font-size: 0; height: 1px; padding: 0; margin: 12px 8px;
+    background: var(--navy-line);
+  }
+  .app-shell.sidebar-collapsed .nav-link { justify-content: center; padding: 11px 0; }
+}
+
+.topbar { justify-content: space-between; gap: 12px; }
+.topbar-right { display: flex; align-items: center; gap: 14px; margin-left: auto; }
+.topbar .who { margin-left: 0; }
+body.has-topbar .topbar .who { display: none; }
+@media (max-width: 900px) { body.has-topbar .topbar .who { display: flex; } }
+
+.theme-toggle {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--navy-800);
+  border: 1px solid var(--navy-line);
+  color: var(--ink-100);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font: inherit; font-size: 12.5px; font-weight: 600;
+  cursor: pointer;
+}
+.theme-toggle:hover { border-color: var(--amber); color: var(--amber); }
+@media (max-width: 520px) { .theme-toggle .theme-toggle-text { display: none; } }
+
+/* ---------- Admin: logo + title sit in the topbar, on one line with the buttons ---------- */
+.topbar { position: sticky; height: 68px; }
+.topbar-brand {
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex; align-items: center; gap: 12px;
+  max-width: calc(100% - 300px);
+  pointer-events: none;
+}
+.topbar-brand .home-hero-logo { padding: 3px 7px; border-radius: 10px; }
+.topbar-brand .home-hero-logo img { height: 40px; }
+.topbar-brand .home-hero-text h2 { font-size: 20px; margin: 0; line-height: 1.1; white-space: nowrap; }
+.topbar-brand .home-hero-text p { font-size: 12px; margin-top: 2px; white-space: nowrap; }
+@media (max-width: 900px) {
+  .topbar-brand .home-hero-text p { display: none; }
+  .topbar-brand { max-width: calc(100% - 200px); }
+}
+@media (max-width: 640px) {
+  .topbar { padding: 0 12px; }
+  .topbar-brand { position: static; transform: none; margin: 0 auto 0 6px; max-width: none; }
+  .topbar-brand .home-hero-text h2 { font-size: 16px; }
+  .topbar-brand .home-hero-logo img { height: 32px; }
+  .topbar-right { margin-left: 0; gap: 8px; }
+  body.has-topbar .topbar .who span { display: none; }
+}
+
+/* Security page: page title sits beside the menu button */
+.topbar-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.topbar-left { flex-direction: row; }
+.topbar-left h1 { font-size: 14px; font-weight: 600; line-height: 1; white-space: nowrap; margin: 0; }
+@media (max-width: 640px) { .topbar-left h1 { font-size: 13px; } }
+
+/* =====================================================================
+   Responsive pass (phones, tablets, small laptops)
+   ===================================================================== */
+.main { min-width: 0; }
+img { max-width: 100%; }
+
+/* Phone/tablet sidebar: slides over the page with a tap-to-close backdrop */
+.sidebar-backdrop { display: none; }
+@media (max-width: 900px) {
+  .sidebar.open {
+    max-width: 85vw;
+    z-index: 30;
+    top: 0; left: 0;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.45);
+    overflow-y: auto;
+  }
+  .sidebar.open + .sidebar-backdrop {
+    display: block;
+    position: fixed; inset: 0;
+    z-index: 25;
+    background: rgba(5, 10, 20, 0.55);
+  }
+  .content { padding: 20px; }
+  .table-scroll { -webkit-overflow-scrolling: touch; }
+}
+
+/* Small laptops / tablets */
+@media (max-width: 1100px) {
+  .dash-stats { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+}
+
+/* Phones */
+@media (max-width: 640px) {
+  .content { padding: 14px; }
+  .card { padding: 14px; }
+  .section-head h2 { font-size: 19px; }
+
+  .dash-stats { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .dash-card { padding: 12px; gap: 10px; }
+  .dash-num { font-size: 32px; min-width: 0; }
+  .dash-icon { display: none; }
+
+  /* Toolbars: every control gets its own full-width row */
+  .data-toolbar { gap: 10px; }
+  .data-toolbar .search-field { min-width: 0; flex: 1 1 100%; }
+  .data-toolbar .toolbar-right { width: 100%; }
+  .data-toolbar .toolbar-right > * { flex: 1 1 auto; }
+  .data-toolbar .toolbar-right .btn { width: 100%; }
+  .data-toolbar select,
+  .data-toolbar input[type="date"] { min-width: 0; max-width: 100%; }
+
+  .pagination-bar { justify-content: center; }
+  .table-scroll { max-height: 70vh; }
+  th, td { padding: 10px 8px; }
+
+  .modal-overlay { padding: 12px; }
+  .modal-box { padding: 18px; max-height: 92vh; }
+  .modal-actions { flex-wrap: wrap; }
+  .modal-actions .btn { flex: 1 1 auto; }
+
+  .login-panel { padding: 24px 16px; }
+
+  /* Topbar: keep everything on one row */
+  .topbar-brand { min-width: 0; flex: 1 1 auto; }
+  .topbar-brand .home-hero-text { min-width: 0; }
+  .topbar-brand .home-hero-text h2 { overflow: hidden; text-overflow: ellipsis; }
+  .topbar-left h1 { display: none; }
+}
+
+@media (max-width: 380px) {
+  .dash-stats { grid-template-columns: 1fr; }
+  .topbar-brand .home-hero-logo { display: none; }
+}
+
+/* =====================================================================
+   Fixed-height app: the page itself never scrolls. Only the table data
+   scrolls (header stays pinned); pages with no table (forms, profile)
+   scroll inside the content area if they are taller than the screen.
+   ===================================================================== */
+html:has(body.has-topbar),
+body.has-topbar { height: 100%; overflow: hidden; }
+
+body.has-topbar .app-shell {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  grid-template-rows: minmax(0, 1fr);
+}
+body.has-topbar .sidebar { height: 100%; }
+body.has-topbar .main {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+body.has-topbar .topbar { flex: none; position: relative; }
+body.has-topbar .content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+body.has-topbar .content > * { flex: 0 0 auto; }
+
+/* JS (fitTables) tags every wrapper from a table box up to the content area
+   with .fit-chain and the table box itself with .fit-fill, so the table
+   takes all remaining height and scrolls inside it. */
+body.has-topbar .content .fit-chain:not([style*="display:none"]):not([style*="display: none"]) {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex !important;
+  flex-direction: column;
+}
+body.has-topbar .content .card.fit-chain { margin-bottom: 0; }
+body.has-topbar .content .fit-fill {
+  flex: 1 1 0;
+  min-height: 200px;
+  max-height: none;
+}
+body.has-topbar .content .fit-chain > .pagination-bar,
+body.has-topbar .content .fit-chain > .data-toolbar,
+body.has-topbar .content .fit-chain > .card-title { flex: none; }
+
+/* A form card that shares the page with a table must not be squashed */
+body.has-topbar .content > .card:not(.fit-chain),
+body.has-topbar .content > .two-col,
+body.has-topbar .content > .assign-board { flex-shrink: 0; }
+
+/* ---------- Search boxes: clear (x) button ---------- */
+.clear-wrap { position: relative; display: block; width: 100%; }
+.clear-wrap > input { padding-right: 36px !important; }
+.clear-wrap:has(> .mini-search) { margin-bottom: 10px; }
+.clear-wrap > .mini-search { margin-bottom: 0; }
+.clear-btn {
+  display: none;
+  position: absolute; right: 8px; top: 50%;
+  transform: translateY(-50%);
+  width: 24px; height: 24px;
+  align-items: center; justify-content: center;
+  padding: 0; border: 0; border-radius: 50%;
+  background: transparent;
+  color: var(--ink-500);
+  cursor: pointer;
+}
+.clear-btn:hover { background: var(--navy-700); color: var(--ink-100); }
+.clear-wrap.has-value > .clear-btn { display: inline-flex; }
+input[type="search"]::-webkit-search-cancel-button { display: none; }
+
+/* ---------- Hide scrollbars everywhere (scrolling still works) ---------- */
+* { scrollbar-width: none; -ms-overflow-style: none; }
+*::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
+/* ---------- Duty Assignments: numbered cards ---------- */
+.duty-no {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 20px; padding: 0 6px;
+  margin-right: 8px;
+  border-radius: 10px;
+  background: var(--navy-700);
+  color: var(--ink-100);
+  font-size: 11px; font-weight: 700; letter-spacing: 0;
+}
+.duty-mini-card .new-badge { color: var(--amber); }
+.duty-mini-card .new-badge .duty-no { background: var(--amber-soft); color: var(--amber); }
+.duty-mini-card .existing-badge:not(.new-badge) .duty-no { background: rgba(76,175,109,0.18); color: var(--success); }
+
+/* ---------- "OR" between the two Add Security cards ---------- */
+.two-col.with-or { grid-template-columns: 1.1fr auto 0.9fr; align-items: stretch; }
+.or-divider {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px;
+  color: var(--ink-500);
+  font-size: 12px; font-weight: 700; letter-spacing: 0.08em;
+}
+.or-divider::before, .or-divider::after {
+  content: ""; flex: 1; width: 1px; background: var(--navy-line);
+}
+.or-divider span {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 1px solid var(--navy-line);
+  background: var(--navy-900);
+}
+@media (max-width: 860px) {
+  .two-col.with-or { grid-template-columns: 1fr; }
+  .or-divider { flex-direction: row; }
+  .or-divider::before, .or-divider::after { width: auto; height: 1px; }
+}
+
+/* ---------- Contact Us card ---------- */
+.contact-card { max-width: 520px; padding: 22px 24px; }
+.contact-title { color: var(--amber); font-size: 19px; font-weight: 700; margin: 0 0 8px; }
+.contact-dept { color: var(--ink-300); font-size: 13px; margin: 0; }
+.contact-divider { height: 1px; background: var(--navy-line); margin: 18px 0; }
+.contact-name { font-weight: 700; font-size: 15px; margin: 0 0 14px; }
+.contact-role { font-size: 14.5px; margin: 0 0 14px; }
+.contact-line { display: flex; align-items: center; gap: 10px; font-size: 14.5px; margin: 0 0 14px; }
+.contact-line:last-child { margin-bottom: 0; }
+.contact-line svg { flex: none; color: var(--amber); }
+.contact-line a:hover { color: var(--amber); text-decoration: underline; }
+.contact-line a, .contact-line span { min-width: 0; overflow-wrap: anywhere; }
+
+/* ---------- Profile table: icon + label ---------- */
+.pf-label { color: var(--ink-500); white-space: nowrap; }
+.pf-label .pf-icon { vertical-align: -3px; margin-right: 10px; color: var(--amber); }
+
+/* ---------- Logout confirmation dialog ---------- */
+.logout-confirm { max-width: 380px; text-align: center; }
+.logout-confirm-icon {
+  width: 52px; height: 52px; margin: 0 auto 14px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: rgba(226, 87, 76, 0.14);
+  color: #e2574c;
+}
+.logout-confirm h3 { margin: 0 0 8px; }
+.logout-confirm p { color: var(--ink-300); font-size: 14px; line-height: 1.5; margin: 0 0 20px; }
+.logout-confirm-actions { display: flex; gap: 10px; justify-content: center; }
+.logout-confirm-actions .btn { flex: 1 1 0; width: auto; }

@@ -7,6 +7,7 @@ const titles = {
   profile: 'Profile',
   changePassword: 'Change Password',
   contact: 'Contact Us',
+  account: 'Personal Data',
 };
 
 // Fills an .avatar element with the guard's profile photo, or their first
@@ -20,19 +21,12 @@ function fillAvatar(el) {
   }
 }
 
-// Sidebar header (name, designation, emp id, mobile + photo) - the guard's
+// Sidebar header (photo, name and emp id only) - the guard's
 // own details, always visible top-left - and the mobile topbar avatar.
 function paintIdentity() {
   if (!user) return;
   document.getElementById('sidebarName').textContent = user.first_name;
-  document.getElementById('sidebarDesignation').textContent = user.designation || 'Security Guard';
   document.getElementById('sidebarEmpId').textContent = `Emp ID: ${user.roll_no}`;
-  // Gender only shows once one is on record (accounts created before the
-  // field existed have none) - otherwise the line is hidden, not left blank.
-  const genderEl = document.getElementById('sidebarGender');
-  genderEl.textContent = user.gender ? `Gender: ${user.gender}` : '';
-  genderEl.style.display = user.gender ? '' : 'none';
-  document.getElementById('sidebarMobile').textContent = user.mobile || '';
   document.getElementById('whoName').textContent = user.first_name;
   fillAvatar(document.getElementById('sidebarAvatar'));
   fillAvatar(document.getElementById('avatarInitial'));
@@ -49,10 +43,71 @@ document.querySelectorAll('.nav-link[data-section]').forEach(el => {
   });
 });
 
-document.getElementById('logoutBtn').addEventListener('click', logout);
-document.getElementById('menuToggle').addEventListener('click', () => {
-  document.getElementById('sidebar').classList.toggle('open');
-});
+document.getElementById('logoutBtn').addEventListener('click', () => confirmLogout(logout));
+// Hamburger: on desktop it collapses/expands the left panel (remembered);
+// on mobile it slides the panel over the page.
+(function () {
+  const shell = document.getElementById('appShell');
+  const sidebar = document.getElementById('sidebar');
+  const btn = document.getElementById('menuToggle');
+  const isMobile = () => window.matchMedia('(max-width: 900px)').matches;
+  const KEY = 'sidebarCollapsed';
+
+  try { if (localStorage.getItem(KEY) === '1') shell.classList.add('sidebar-collapsed'); } catch (e) {}
+
+  function syncAria() {
+    const open = isMobile() ? sidebar.classList.contains('open') : !shell.classList.contains('sidebar-collapsed');
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
+  btn.addEventListener('click', () => {
+    if (isMobile()) {
+      sidebar.classList.toggle('open');
+    } else {
+      const collapsed = shell.classList.toggle('sidebar-collapsed');
+      try { localStorage.setItem(KEY, collapsed ? '1' : '0'); } catch (e) {}
+    }
+    syncAria();
+  });
+  const backdrop = document.getElementById('sidebarBackdrop');
+  if (backdrop) backdrop.addEventListener('click', () => { sidebar.classList.remove('open'); syncAria(); });
+  // First visit on a small laptop/tablet: start with the slim icon rail to give the content room.
+  try {
+    if (localStorage.getItem(KEY) === null && window.matchMedia('(max-width: 1100px)').matches) {
+      shell.classList.add('sidebar-collapsed');
+    }
+  } catch (e) {}
+  window.addEventListener('resize', syncAria);
+  syncAria();
+})();
+
+// Page never scrolls; only table data does. Tag the wrappers from each
+// visible table box up to #content so CSS can hand the table the remaining height.
+(function () {
+  const content = document.getElementById('content');
+  if (!content) return;
+  let queued = false;
+  function fitTables() {
+    queued = false;
+    content.querySelectorAll('.fit-chain, .fit-fill').forEach(el => el.classList.remove('fit-chain', 'fit-fill'));
+    content.querySelectorAll('.table-scroll').forEach(ts => {
+      // skip tables inside hidden tabs/panels
+      if (ts.offsetParent === null && getComputedStyle(ts).position !== 'fixed') {
+        let hidden = false;
+        for (let p = ts.parentElement; p && p !== content; p = p.parentElement) {
+          if ((p.getAttribute('style') || '').replace(/\s/g, '').includes('display:none')) { hidden = true; break; }
+        }
+        if (hidden) return;
+      }
+      ts.classList.add('fit-fill');
+      for (let p = ts.parentElement; p && p !== content; p = p.parentElement) p.classList.add('fit-chain');
+    });
+  }
+  const queue = () => { if (!queued) { queued = true; requestAnimationFrame(fitTables); } };
+  new MutationObserver(queue).observe(content, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
+  queue();
+})();
+
 
 // Sections that show the guard's live duty assignments from MongoDB. Every
 // time the guard opens one of these, duties are re-fetched, so a duty the
@@ -266,7 +321,6 @@ function todayISODate() {
 const renderers = {
   home: () => {
     return `
-    ${sectionHead('Welcome back, ' + esc(user.first_name.split(' ')[0]), esc(user.designation) + ' • Roll No ' + esc(user.roll_no))}
     <div class="card">
       <div class="card-title">Reminder</div>
       <p style="color:var(--ink-300); font-size:13.5px;">QR scanning is only accepted between 6:00 PM and 6:00 AM. Scans outside this window will be rejected.</p>
@@ -353,11 +407,11 @@ const renderers = {
       <div class="avatar" style="width:80px; height:80px; font-size:28px; margin:0 auto 16px;">${avatar}</div>
       <p style="color:var(--ink-500); font-size:11.5px; margin-bottom:18px;">Your photo is set by an administrator.</p>
       <table style="text-align:left;">
-        <tr><td style="color:var(--ink-500);">Name</td><td>${esc(u.first_name)}</td></tr>
-        <tr><td style="color:var(--ink-500);">Gender</td><td>${esc(u.gender || '—')}</td></tr>
-        <tr><td style="color:var(--ink-500);">Designation</td><td>${esc(u.designation || '—')}</td></tr>
-        <tr><td style="color:var(--ink-500);">Roll No</td><td>${esc(u.roll_no)}</td></tr>
-        <tr><td style="color:var(--ink-500);">Mobile</td><td>${esc(u.mobile || '—')}</td></tr>
+        <tr><td class="pf-label"><svg class="pf-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Name</span></td><td>${esc(u.first_name)}</td></tr>
+        <tr><td class="pf-label"><svg class="pf-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M9 12v8M6 17h6"/><path d="M15 4h5v5M20 4l-5 5"/></svg><span>Gender</span></td><td>${esc(u.gender || '—')}</td></tr>
+        <tr><td class="pf-label"><svg class="pf-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M3 13h18"/></svg><span>Designation</span></td><td>${esc(u.designation || '—')}</td></tr>
+        <tr><td class="pf-label"><svg class="pf-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M6 16c.6-1.6 1.8-2.3 3-2.3s2.4.7 3 2.3M15 9h3M15 13h3"/></svg><span>Roll No</span></td><td>${esc(u.roll_no)}</td></tr>
+        <tr><td class="pf-label"><svg class="pf-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg><span>Mobile</span></td><td>${esc(u.mobile || '—')}</td></tr>
       </table>
     </div>
   `;
@@ -366,16 +420,52 @@ const renderers = {
   changePassword: () => changePasswordSectionHtml(sectionHead),
 
   contact: () => `
-    ${sectionHead('Contact Us', 'Reach the support team for help with the app.')}
-    <div class="card" style="max-width:420px;">
-      <p>support@adityasecurityguard.com</p>
-      <p>+91 98765 43210</p>
-      <p>Aditya Towers, Hyderabad, India</p>
+    <div class="card contact-card">
+      <h3 class="contact-title">Contact Us</h3>
+      <p class="contact-dept">Department of Technical Training</p>
+      <div class="contact-divider"></div>
+      <p class="contact-name">Nanda Kumar</p>
+      <p class="contact-role">Assistant Mentor | App Developer</p>
+      <p class="contact-line"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg><a href="mailto:nandakumark@adityauniversity.in">nandakumark@adityauniversity.in</a></p>
+      <p class="contact-line"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6A19.8 19.8 0 012.1 4.2 2 2 0 014.1 2h3a2 2 0 012 1.7c.1 1 .4 1.9.7 2.8a2 2 0 01-.5 2.1L8 9.9a16 16 0 006 6l1.3-1.3a2 2 0 012.1-.4c.9.3 1.8.6 2.8.7a2 2 0 011.7 2z"/></svg><a href="tel:+919000443261">+91 9000443261</a></p>
+      <p class="contact-line"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M6 21V5a1 1 0 011-1h7a1 1 0 011 1v16M15 9h3a1 1 0 011 1v11M9 8h2M9 12h2M9 16h2"/></svg><span>Department of Technical Training</span></p>
     </div>
   `,
 };
 
+// ---------- Account: Profile / Change Password / Contact Us as three top tabs ----------
+renderers.account = () => {
+  const strip = (html) => html.replace(/<div class="section-head">[\s\S]*?<\/p>\s*<\/div>/, '');
+  return `
+    ${sectionHead('Personal Data', 'Your profile details and password.')}
+    <div class="tabs" id="accountTabs">
+      <button class="tab-btn active" data-tab="accProfile" type="button">Profile</button>
+      <button class="tab-btn" data-tab="accPassword" type="button">Change Password</button>
+    </div>
+    <div class="tab-panel" id="tab-accProfile">${strip(renderers.profile())}</div>
+    <div class="tab-panel" id="tab-accPassword" style="display:none;">${strip(renderers.changePassword())}</div>
+  `;
+};
+
+function attachAccountHandlers() {
+  const names = ['accProfile', 'accPassword'];
+  document.querySelectorAll('#accountTabs .tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#accountTabs .tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      names.forEach(n => { document.getElementById('tab-' + n).style.display = (n === btn.dataset.tab) ? 'block' : 'none'; });
+    });
+  });
+}
+
 function attachHandlers(section) {
+  if (section === 'account') {
+    attachHandlers('profile');
+    attachHandlers('changePassword');
+    attachAccountHandlers();
+    return;
+  }
+
   const retry = document.getElementById('retryDutiesBtn');
   if (retry) retry.addEventListener('click', () => render(section));
 
