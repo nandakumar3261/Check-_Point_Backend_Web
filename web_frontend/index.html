@@ -4,37 +4,33 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Aditya Security Guard — Sign In</title>
-<link rel="stylesheet" href="css/style.css" />
+<link rel="stylesheet" href="css/style.css?v=login-card-7" />
 </head>
 <body>
 
 <div class="login-shell">
-  <div class="login-hero">
-    <div class="brand">
-      <div class="brand-mark">AS</div>
-      <span style="font-family:'Big Shoulders Display',sans-serif; font-weight:700; font-size:15px;">ADITYA SECURITY GUARD</span>
-    </div>
-
-    <div>
-      <h1 class="headline">Every gate.<br>Every hour.<br><em>Logged.</em></h1>
-      <p class="sub">Duty rosters, QR check-ins and site photo evidence for every guard, on every shift — from 6 in the evening to 6 the next morning.</p>
-    </div>
-
-  </div>
-
   <div class="login-panel">
     <div class="login-card">
+      <div class="login-icon">
+        <img src="images/check_point_logo.png" alt="Check Point" />
+      </div>
+      <div class="login-brand">Aditya Security Guard</div>
       <h2>Sign in</h2>
-      <p class="lead">Enter your roll number to continue.</p>
+      <p class="lead">Enter your employee ID to continue.</p>
 
       <form id="loginForm">
         <div class="field">
-          <label for="rollNo">Roll No</label>
-          <input id="rollNo" type="text" autocomplete="username" placeholder="e.g. 2758" />
+          <label for="rollNo">Employee ID</label>
+          <div class="input-icon"><svg class="field-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M6 16c.6-1.6 1.8-2.3 3-2.3s2.4.7 3 2.3M15 9h3M15 13h3"/></svg>
+          <input id="rollNo" type="text" autocomplete="username" placeholder="Enter employee ID" />
+        </div>
         </div>
         <div class="field">
           <label for="password">Password</label>
-          <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" />
+          <div class="input-icon"><svg class="field-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+          <input id="password" type="password" autocomplete="current-password" placeholder="Enter password" />
+          <button type="button" class="pw-toggle" data-target="password" aria-label="Show password" title="Show password"><svg class="eye-on" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><svg class="eye-off" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:none"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.7 10.7 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2M6.6 6.6A17.4 17.4 0 0 0 2 12s3.6 7 10 7c1.8 0 3.4-.5 4.8-1.2"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg></button>
+        </div>
         </div>
         <div class="error-text" id="errorText"></div>
 
@@ -48,7 +44,7 @@
   </div>
 </div>
 
-<!-- Forgot Password popup: roll no -> OTP -> new password, all on this same page. -->
+<!-- Forgot Password popup: employee ID -> OTP -> new password, all on this same page. -->
 <div class="modal-overlay" id="fpOverlay" style="display:none;">
   <div class="modal-box" id="fpBox">
     <h3>Reset your password</h3>
@@ -59,12 +55,14 @@
       <div class="fp-step" id="fpStepBar3"></div>
     </div>
 
-    <!-- Step 1: Roll No -->
+    <!-- Step 1: Employee ID -->
     <div id="fpStep1">
-      <p class="fp-hint">Enter your roll number and we'll send a one-time code to your registered mobile number.</p>
+      <p class="fp-hint">Enter your employee ID and we'll send a one-time code to your registered mobile number.</p>
       <div class="field">
-        <label for="fpRollNo">Roll No</label>
-        <input id="fpRollNo" type="text" autocomplete="off" placeholder="e.g. 2758" />
+        <label for="fpRollNo">Employee ID</label>
+        <div class="input-icon"><svg class="field-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M6 16c.6-1.6 1.8-2.3 3-2.3s2.4.7 3 2.3M15 9h3M15 13h3"/></svg>
+          <input id="fpRollNo" type="text" autocomplete="off" placeholder="Enter employee ID" />
+        </div>
       </div>
       <div class="error-text" id="fpStep1Error"></div>
       <div class="modal-actions">
@@ -78,7 +76,9 @@
       <p class="fp-hint" id="fpOtpHint">Enter the code sent to your registered mobile number.</p>
       <div class="field">
         <label for="fpOtp">OTP Code</label>
-        <input id="fpOtp" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="Enter code" />
+        <div class="input-icon"><svg class="field-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.4 3.2 8 7.5 9.5 4.3-1.5 7.5-5.1 7.5-9.5V6L12 3z"/><path d="m9 12 2.2 2.2L15.2 10"/></svg>
+          <input id="fpOtp" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="Enter code" />
+        </div>
       </div>
       <div class="fp-resend-row">
         <span id="fpResendText"></span>
@@ -96,11 +96,17 @@
       <p class="fp-hint">Choose a new password for your account.</p>
       <div class="field">
         <label for="fpNewPassword">New Password</label>
-        <input id="fpNewPassword" type="password" autocomplete="new-password" placeholder="••••••••" />
+        <div class="input-icon"><svg class="field-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+          <input id="fpNewPassword" type="password" autocomplete="new-password" placeholder="Enter new password" />
+          <button type="button" class="pw-toggle" data-target="fpNewPassword" aria-label="Show password" title="Show password"><svg class="eye-on" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><svg class="eye-off" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:none"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.7 10.7 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2M6.6 6.6A17.4 17.4 0 0 0 2 12s3.6 7 10 7c1.8 0 3.4-.5 4.8-1.2"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg></button>
+        </div>
       </div>
       <div class="field">
         <label for="fpConfirmPassword">Confirm Password</label>
-        <input id="fpConfirmPassword" type="password" autocomplete="new-password" placeholder="••••••••" />
+        <div class="input-icon"><svg class="field-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+          <input id="fpConfirmPassword" type="password" autocomplete="new-password" placeholder="Confirm new password" />
+          <button type="button" class="pw-toggle" data-target="fpConfirmPassword" aria-label="Show password" title="Show password"><svg class="eye-on" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><svg class="eye-off" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:none"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.7 10.7 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2M6.6 6.6A17.4 17.4 0 0 0 2 12s3.6 7 10 7c1.8 0 3.4-.5 4.8-1.2"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg></button>
+        </div>
       </div>
       <div class="error-text" id="fpStep3Error"></div>
       <div class="modal-actions">
@@ -144,7 +150,7 @@
       setCurrentUser(user, password); // password kept (obfuscated, this tab only) so the session can be re-verified later
       window.location.href = user.role === 'admin' ? 'admin.html' : 'user.html';
     } catch (err) {
-      errorText.textContent = err.message || 'Invalid roll number or password.';
+      errorText.textContent = err.message || 'Invalid employee ID or password.';
     } finally {
       submitBtn.disabled = false;
       submitBtn.textContent = 'Log in';
@@ -239,7 +245,7 @@
       errBox.textContent = '';
 
       if (!rollNo) {
-        errBox.textContent = 'Please enter your roll number.';
+        errBox.textContent = 'Please enter your employee ID.';
         return;
       }
 
@@ -258,7 +264,7 @@
         startResendTimer(result.resend_in || 30);
         document.getElementById('fpOtp').focus();
       } catch (err) {
-        errBox.textContent = err.message || 'Could not send OTP. Please check the roll number and try again.';
+        errBox.textContent = err.message || 'Could not send OTP. Please check the employee ID and try again.';
       } finally {
         btn.disabled = false;
         btn.textContent = 'Send OTP';
@@ -338,6 +344,19 @@
       }
     });
   })();
+
+  document.querySelectorAll('.pw-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById(btn.dataset.target);
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      btn.querySelector('.eye-on').style.display = show ? 'none' : '';
+      btn.querySelector('.eye-off').style.display = show ? '' : 'none';
+      const label = show ? 'Hide password' : 'Show password';
+      btn.setAttribute('aria-label', label);
+      btn.title = label;
+    });
+  });
 </script>
 </body>
 </html>

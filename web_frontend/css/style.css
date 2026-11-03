@@ -45,25 +45,47 @@ a { color: inherit; text-decoration: none; }
 
 /* ---------- Login page ---------- */
 .login-shell {
+  position: relative;
   min-height: 100vh;
-  display: grid;
-  grid-template-columns: 1.1fr 1fr;
+  display: block;
+  background: var(--navy-950);
+  overflow: hidden;
 }
 
+/* Full-page background photo with reduced opacity */
+.login-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url('../images/login_bg.jpg') center / cover no-repeat;
+  opacity: 0.35;
+  z-index: 0;
+}
+
+/* Dark gradient over the photo so the card stays readable */
+.login-shell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(232,163,61,0.10), transparent 45%),
+    linear-gradient(160deg, rgba(14,26,46,0.55), rgba(10,17,32,0.75) 65%);
+  z-index: 0;
+}
+
+.login-shell > * { position: relative; z-index: 1; }
+
 @media (max-width: 860px) {
-  .login-shell { grid-template-columns: 1fr; }
   .login-hero { display: none; }
 }
 
 .login-hero {
-  background:
-    radial-gradient(circle at 20% 20%, rgba(232,163,61,0.10), transparent 45%),
-    linear-gradient(160deg, var(--navy-900), var(--navy-950) 65%);
-  border-right: 1px solid var(--navy-line);
-  padding: 64px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 32px 48px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
 }
 
 .login-hero .brand {
@@ -147,14 +169,46 @@ a { color: inherit; text-decoration: none; }
   .login-card { padding: 28px 20px; }
 }
 
+.login-icon {
+  width: 132px;
+  height: 132px;
+  margin: 0 auto 18px;
+  padding: 10px;
+  border-radius: 20px;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.login-brand {
+  text-align: center;
+  font-family: 'Big Shoulders Display', sans-serif;
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin: 0 0 22px;
+}
+
 .login-card h2 {
   font-size: 26px;
   color: var(--ink-100);
+  text-align: center;
 }
 
 .login-card .lead {
   color: var(--ink-500);
   font-size: 13.5px;
+  text-align: center;
   margin: 6px 0 28px;
 }
 
@@ -177,6 +231,41 @@ a { color: inherit; text-decoration: none; }
   font-size: 14px;
   font-family: inherit;
 }
+
+.input-icon { position: relative; }
+.input-icon .field-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink-500);
+  pointer-events: none;
+}
+.input-icon input { padding-left: 42px; }
+/* Hide the browser's built-in password reveal / clear icons (Edge, Chrome) so only our toggle shows */
+input::-ms-reveal,
+input::-ms-clear { display: none; }
+input::-webkit-credentials-auto-fill-button { visibility: hidden; display: none !important; pointer-events: none; }
+
+.input-icon .pw-toggle {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  color: var(--ink-500);
+  cursor: pointer;
+}
+.input-icon .pw-toggle:hover { color: var(--amber); }
+.input-icon:has(.pw-toggle) input { padding-right: 46px; }
+.input-icon:focus-within .field-icon { color: var(--amber); }
 
 .field textarea {
   resize: vertical;
