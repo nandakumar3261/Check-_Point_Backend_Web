@@ -634,17 +634,17 @@ const renderers = {
   profile: () => `
     ${sectionHead('Profile', 'View your profile details and update your photo.')}
     <div class="card" style="max-width:420px; text-align:center;">
-      <div class="avatar" id="profileAvatar" style="width:80px; height:80px; font-size:28px; margin:0 auto 16px;">${user.first_name.charAt(0)}</div>
+      <div class="avatar" id="profileAvatar" style="width:80px; height:80px; font-size:28px; margin:0 auto 16px;">${escapeHtml(user.first_name.charAt(0))}</div>
       <input type="file" id="profilePicInput" accept=".jpg,.jpeg,.png,image/jpeg,image/png" style="display:none;">
       <button class="btn btn-outline" id="changePhotoBtn" style="width:auto; padding:8px 18px; margin-bottom:6px;">Change Photo</button>
       <div class="error-text" id="profilePicError"></div>
       <p style="color:var(--ink-500); font-size:11.5px; margin-bottom:18px;">JPG or PNG only, max 2 MB.</p>
       <table style="text-align:left;">
-        <tr><td class="pf-label"><svg class="pf-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Name</span></td><td>${user.first_name}</td></tr>
+        <tr><td class="pf-label"><svg class="pf-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Name</span></td><td>${escapeHtml(user.first_name)}</td></tr>
         <tr><td class="pf-label"><svg class="pf-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M9 12v8M6 17h6"/><path d="M15 4h5v5M20 4l-5 5"/></svg><span>Gender</span></td><td>${escapeHtml(user.gender || '—')}</td></tr>
-        <tr><td class="pf-label"><svg class="pf-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M3 13h18"/></svg><span>Designation</span></td><td>${user.designation}</td></tr>
-        <tr><td class="pf-label"><svg class="pf-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M6 16c.6-1.6 1.8-2.3 3-2.3s2.4.7 3 2.3M15 9h3M15 13h3"/></svg><span>Roll No</span></td><td>${user.roll_no}</td></tr>
-        <tr><td class="pf-label"><svg class="pf-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg><span>Mobile</span></td><td>${user.mobile}</td></tr>
+        <tr><td class="pf-label"><svg class="pf-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M3 13h18"/></svg><span>Designation</span></td><td>${escapeHtml(user.designation)}</td></tr>
+        <tr><td class="pf-label"><svg class="pf-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M6 16c.6-1.6 1.8-2.3 3-2.3s2.4.7 3 2.3M15 9h3M15 13h3"/></svg><span>Roll No</span></td><td>${escapeHtml(user.roll_no)}</td></tr>
+        <tr><td class="pf-label"><svg class="pf-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg><span>Mobile</span></td><td>${escapeHtml(user.mobile)}</td></tr>
       </table>
     </div>
   `,
@@ -902,14 +902,14 @@ function attachHandlers(section) {
           html.push(`<td class="serial-col grp-first" rowspan="${groupSpan}" style="vertical-align:top;">${r.groupIndex}</td>`);
         }
         if (r.isNewGuard) {
-          html.push(`<td rowspan="${guardSpan}" style="vertical-align:top;">${r.guardName} ( ${r.guardEmpId} )</td>`);
+          html.push(`<td rowspan="${guardSpan}" style="vertical-align:top;">${escapeHtml(r.guardName)} ( ${escapeHtml(r.guardEmpId)} )</td>`);
         }
         if (r.isNewGroup) {
-          html.push(`<td class="preserve-space" rowspan="${groupSpan}" style="vertical-align:top;">${r.mainPlace}</td>`);
+          html.push(`<td class="preserve-space" rowspan="${groupSpan}" style="vertical-align:top;">${escapeHtml(r.mainPlace)}</td>`);
         }
 
         html.push(`<td class="serial-col">${r.subIndex}</td>`);
-        html.push(`<td class="preserve-space">${r.subPlace}</td>`);
+        html.push(`<td class="preserve-space">${escapeHtml(r.subPlace)}</td>`);
         html.push(`<td class="status-col"><span class="status-pill ${r.scanned ? 'is-scanned' : 'is-pending'}">${r.scanned ? ICON_CHECK : ICON_PENDING}${r.scanned ? 'Scanned' : 'Not scanned'}</span></td>`);
         html.push(`<td>${scanSlotsHtml(r, timelineChipHtml)}</td>`);
         html.push(`<td>${scanSlotsHtml(r, geoChipHtml)}</td>`);
@@ -946,7 +946,7 @@ function attachHandlers(section) {
         })
         .catch(err => {
           document.getElementById('recentScansBody').innerHTML =
-            `<tr><td colspan="8" style="color:var(--danger); font-size:13px;">Could not load from MongoDB: ${err.message}</td></tr>`;
+            `<tr><td colspan="8" style="color:var(--danger); font-size:13px;">Could not load from MongoDB: ${escapeHtml(err.message)}</td></tr>`;
           updateRecentScansPager(0, 1);
         });
     }
@@ -1751,10 +1751,10 @@ function attachHandlers(section) {
           statusBox.innerHTML = `<span class="badge badge-success">${result.insertedCount} added</span> &nbsp; <span class="badge ${result.skippedCount ? 'badge-danger' : 'badge-amber'}">${result.skippedCount} skipped</span>`;
           const skipped = result.results.filter(r => r.status === 'skipped');
           resultList.innerHTML = skipped.length
-            ? skipped.map(r => `<div class="row-item"><span>Row ${r.row} (${r.roll_no || '—'})</span><span style="color:var(--danger);">${r.reason}</span></div>`).join('')
+            ? skipped.map(r => `<div class="row-item"><span>Row ${r.row} (${r.roll_no || '—'})</span><span style="color:var(--danger);">${escapeHtml(r.reason)}</span></div>`).join('')
             : '<div style="color:var(--ink-500); padding:6px 0;">No rows skipped.</div>';
         } catch (err) {
-          statusBox.innerHTML = `<span style="color:var(--danger);">${err.message}</span>`;
+          statusBox.innerHTML = `<span style="color:var(--danger);">${escapeHtml(err.message)}</span>`;
         } finally {
           uploadBtn.disabled = false;
           fileInput.value = '';
@@ -1790,12 +1790,12 @@ function attachHandlers(section) {
                       </button>
                     </td>
                     <td class="serial-col">${startSerial + i + 1}</td>
-                    <td>${u.first_name}</td>
-                    <td>${u.roll_no}</td>
+                    <td>${escapeHtml(u.first_name)}</td>
+                    <td>${escapeHtml(u.roll_no)}</td>
                     <td><span class="badge ${u.role === 'admin' ? 'badge-amber' : 'badge-success'}">${u.role}</span></td>
                     <td>${escapeHtml(u.gender || '—')}</td>
-                    <td>${u.mobile}</td>
-                    <td>${u.designation}</td>
+                    <td>${escapeHtml(u.mobile)}</td>
+                    <td>${escapeHtml(u.designation)}</td>
                     <td><span class="badge ${u.blocked ? 'badge-blocked' : 'badge-success'}">${u.blocked ? 'Blocked' : 'Active'}</span></td>
                     <td>
                       <div class="row-actions">
@@ -1822,7 +1822,7 @@ function attachHandlers(section) {
       fetchUsersViaApi({ search: state.search, page: state.page, limit: state.limit })
         .then(renderTable)
         .catch(err => {
-          document.getElementById('securityDataTableWrap').innerHTML = `<p style="color:var(--danger); font-size:13px;">Could not load from MongoDB: ${err.message}</p>`;
+          document.getElementById('securityDataTableWrap').innerHTML = `<p style="color:var(--danger); font-size:13px;">Could not load from MongoDB: ${escapeHtml(err.message)}</p>`;
         });
     };
 
@@ -1957,9 +1957,9 @@ function attachHandlers(section) {
       const u = currentRows.find(r => r._id === id);
       if (!u) return;
       openModal(`
-        <h3>Edit account — ${u.roll_no}</h3>
+        <h3>Edit account — ${escapeHtml(u.roll_no)}</h3>
         <form id="editUserForm">
-          <div class="field"><label>Full name</label><input required name="first_name" value="${u.first_name}" /></div>
+          <div class="field"><label>Full name</label><input required name="first_name" value="${escapeHtml(u.first_name)}" /></div>
           <div class="field">
             <label>Gender</label>
             <select name="gender">
@@ -1969,8 +1969,8 @@ function attachHandlers(section) {
               <option value="Other" ${u.gender === 'Other' ? 'selected' : ''}>Other</option>
             </select>
           </div>
-          <div class="field"><label>Designation</label><input name="designation" value="${u.designation}" /></div>
-          <div class="field"><label>Mobile</label><input required name="mobile" type="tel" inputmode="numeric" maxlength="10" value="${u.mobile}" /></div>
+          <div class="field"><label>Designation</label><input name="designation" value="${escapeHtml(u.designation)}" /></div>
+          <div class="field"><label>Mobile</label><input required name="mobile" type="tel" inputmode="numeric" maxlength="10" value="${escapeHtml(u.mobile)}" /></div>
           <div class="field">
             <label>Role</label>
             <select name="role">
@@ -2120,7 +2120,7 @@ function attachHandlers(section) {
     function renderPendingChips(containerId, list, onRemove) {
       const box = document.getElementById(containerId);
       box.innerHTML = list.map((s, i) =>
-        `<span class="chip">${s} <span class="chip-remove" data-i="${i}">✕</span></span>`).join('');
+        `<span class="chip">${escapeHtml(s)} <span class="chip-remove" data-i="${i}">✕</span></span>`).join('');
       box.querySelectorAll('.chip-remove').forEach(x => {
         x.addEventListener('click', () => { list.splice(parseInt(x.dataset.i, 10), 1); onRemove(); });
       });
@@ -2180,7 +2180,7 @@ function attachHandlers(section) {
         const res = await fetchDutyPlaceOptionsViaApi();
         mainPlaceOptions = res.data;
         select.innerHTML = '<option value="">Select a main place</option>' +
-          mainPlaceOptions.map(p => `<option value="${p._id}">${p.mainPlace}</option>`).join('');
+          mainPlaceOptions.map(p => `<option value="${p._id}">${escapeHtml(p.mainPlace)}</option>`).join('');
         if (previous && mainPlaceOptions.some(p => p._id === previous)) {
           select.value = previous;
           select.dispatchEvent(new Event('change'));
@@ -2207,7 +2207,7 @@ function attachHandlers(section) {
       }
       const place = mainPlaceOptions.find(p => p._id === id);
       chipsBox.innerHTML = (place && place.subPlaces.length)
-        ? place.subPlaces.map(s => `<span class="chip">${s.name}</span>`).join('')
+        ? place.subPlaces.map(s => `<span class="chip">${escapeHtml(s.name)}</span>`).join('')
         : '<span style="color:var(--ink-500); font-size:12.5px;">No sub places yet</span>';
       input.disabled = false; addBtn.disabled = false; saveBtn.disabled = false;
     });
@@ -2259,8 +2259,8 @@ function attachHandlers(section) {
                 ${res.data.map((p, i) => `
                   <tr data-id="${p._id}">
                     <td class="serial-col">${startSerial + i + 1}</td>
-                    <td><b class="preserve-space">${p.mainPlace}</b></td>
-                    <td>${p.subPlaces.map(s => `<span class="chip">${s.name}</span>`).join('') || '<span style="color:var(--ink-500); font-size:12px;">No sub places</span>'}</td>
+                    <td><b class="preserve-space">${escapeHtml(p.mainPlace)}</b></td>
+                    <td>${p.subPlaces.map(s => `<span class="chip">${escapeHtml(s.name)}</span>`).join('') || '<span style="color:var(--ink-500); font-size:12px;">No sub places</span>'}</td>
                     <td style="white-space:nowrap; color:var(--ink-300); font-size:12.5px;">${formatDateTime(p.createdAt)}</td>
                     <td>
                       <div class="row-actions">
@@ -2287,7 +2287,7 @@ function attachHandlers(section) {
       fetchDutyPlacesViaApi({ search: state.search, page: state.page, limit: state.limit })
         .then(renderPlacesTable)
         .catch(err => {
-          document.getElementById('dutyPlacesTableWrap').innerHTML = `<p style="color:var(--danger); font-size:13px;">Could not load from MongoDB: ${err.message}</p>`;
+          document.getElementById('dutyPlacesTableWrap').innerHTML = `<p style="color:var(--danger); font-size:13px;">Could not load from MongoDB: ${escapeHtml(err.message)}</p>`;
         });
     }
 
@@ -2317,8 +2317,8 @@ function attachHandlers(section) {
       if (!p) return;
       const quickPending = [];
       openModal(`
-        <h3 class="preserve-space">Add sub places — ${p.mainPlace}</h3>
-        <div style="margin-bottom:10px;">${p.subPlaces.map(s => `<span class="chip">${s.name}</span>`).join('') || '<span style="color:var(--ink-500); font-size:12.5px;">No sub places yet</span>'}</div>
+        <h3 class="preserve-space">Add sub places — ${escapeHtml(p.mainPlace)}</h3>
+        <div style="margin-bottom:10px;">${p.subPlaces.map(s => `<span class="chip">${escapeHtml(s.name)}</span>`).join('') || '<span style="color:var(--ink-500); font-size:12.5px;">No sub places yet</span>'}</div>
         <div class="field" style="display:flex; gap:8px; align-items:flex-end;">
           <div style="flex:1;"><label style="display:block; font-size:12.5px; color:var(--ink-300); margin-bottom:6px;">New sub place</label><input id="quickSubPlaceInput" placeholder="e.g. Gate D" /></div>
           <button class="btn btn-outline" type="button" id="quickAddBtn">+</button>
@@ -2358,7 +2358,7 @@ function attachHandlers(section) {
       const names = p.subPlaces.map(s => s.name);
       openModal(`
         <h3>Edit duty place</h3>
-        <div class="field"><label>Main place</label><input id="editMainPlaceInput" value="${p.mainPlace}" /></div>
+        <div class="field"><label>Main place</label><input id="editMainPlaceInput" value="${escapeHtml(p.mainPlace)}" /></div>
         <div class="field">
           <label style="display:block; font-size:12.5px; color:var(--ink-300); margin-bottom:6px;">Sub places</label>
           <div id="editSubPlaceRows"></div>
@@ -2481,7 +2481,7 @@ function attachHandlers(section) {
         const res = await fetchDutyPlaceOptionsViaApi();
         qrPlaceOptions = res.data;
         select.innerHTML = '<option value="">Select a main place</option>' +
-          qrPlaceOptions.map(p => `<option value="${p._id}">${p.mainPlace}</option>`).join('');
+          qrPlaceOptions.map(p => `<option value="${p._id}">${escapeHtml(p.mainPlace)}</option>`).join('');
         if (previous && qrPlaceOptions.some(p => p._id === previous)) {
           select.value = previous;
           select.dispatchEvent(new Event('change'));
@@ -2512,7 +2512,7 @@ function attachHandlers(section) {
         return;
       }
       subSelect.innerHTML = '<option value="">Select a sub place</option>' +
-        place.subPlaces.map((s, i) => `<option value="${i}">${s.name}</option>`).join('');
+        place.subPlaces.map((s, i) => `<option value="${i}">${escapeHtml(s.name)}</option>`).join('');
       subSelect.disabled = false;
     });
 
@@ -2544,7 +2544,7 @@ function attachHandlers(section) {
 
         previewWrap.innerHTML = `
           <div class="qr-frame"><img src="${dataUrl}" alt="QR code" style="display:block; width:220px; height:220px;" /></div>
-          <div class="preserve-space" style="font-size:16px; font-weight:700;">${subPlace.name}</div>
+          <div class="preserve-space" style="font-size:16px; font-weight:700;">${escapeHtml(subPlace.name)}</div>
         `;
         document.getElementById('downloadQrPdfBtn').disabled = false;
       } catch (err) {
@@ -2714,7 +2714,7 @@ function attachHandlers(section) {
         const isUsed = used.has(p.mainPlace.toLowerCase());
         return `
           <div class="assign-item${isUsed ? ' used' : ''}" draggable="${isUsed ? 'false' : 'true'}" data-place-id="${p._id}">
-            <span class="idx">${i + 1}.</span> <span class="preserve-space">${p.mainPlace}</span>
+            <span class="idx">${i + 1}.</span> <span class="preserve-space">${escapeHtml(p.mainPlace)}</span>
             ${isUsed ? '<span style="margin-left:auto; font-size:10.5px; color:var(--ink-500);">assigned</span>' : ''}
           </div>`;
       }).join('');
@@ -2739,7 +2739,7 @@ function attachHandlers(section) {
         const isUsed = used.has(g.roll_no);
         return `
           <div class="assign-item${isUsed ? ' used' : ''}" draggable="${isUsed ? 'false' : 'true'}" data-guard-id="${g._id}">
-            <span class="idx">${i + 1}.</span> ${g.first_name} <span style="color:var(--ink-500);">(${g.roll_no})</span>
+            <span class="idx">${i + 1}.</span> ${escapeHtml(g.first_name)} <span style="color:var(--ink-500);">(${escapeHtml(g.roll_no)})</span>
             ${isUsed ? '<span style="margin-left:auto; font-size:10.5px; color:var(--ink-500);">assigned</span>' : ''}
           </div>`;
       }).join('');
@@ -2753,18 +2753,18 @@ function attachHandlers(section) {
       const existingHtml = existingDutiesForDate.map((d, i) => `
         <div class="duty-mini-card existing-duty">
           <div class="existing-badge"><span class="duty-no">${i + 1}</span>Already assigned</div>
-          <div class="mini-place preserve-space">${d.mainPlace}</div>
-          <div>${(d.subPlaces || []).map(s => `<span class="chip">${s}</span>`).join('')}</div>
-          <div class="mini-guard-slot filled">${d.guardName} (${d.guardEmpId})</div>
+          <div class="mini-place preserve-space">${escapeHtml(d.mainPlace)}</div>
+          <div>${(d.subPlaces || []).map(s => `<span class="chip">${escapeHtml(s)}</span>`).join('')}</div>
+          <div class="mini-guard-slot filled">${escapeHtml(d.guardName)} (${escapeHtml(d.guardEmpId)})</div>
         </div>`).join('');
 
       const pendingHtml = pendingDuties.map((d, i) => `
         <div class="duty-mini-card" data-client-id="${d.clientId}">
           <button type="button" class="remove-btn" data-client-id="${d.clientId}" title="Remove this duty">✕</button>
           <div class="existing-badge new-badge"><span class="duty-no">${existingDutiesForDate.length + i + 1}</span>New</div>
-          <div class="mini-place preserve-space">${d.mainPlace}</div>
-          <div>${d.subPlaces.length ? d.subPlaces.map(s => `<span class="chip">${s}</span>`).join('') : '<span style="color:var(--ink-500); font-size:11.5px;">No sub places</span>'}</div>
-          <div class="mini-guard-slot${d.guardName ? ' filled' : ''}" data-client-id="${d.clientId}">${d.guardName ? d.guardName : 'Drop a guard here'}</div>
+          <div class="mini-place preserve-space">${escapeHtml(d.mainPlace)}</div>
+          <div>${d.subPlaces.length ? d.subPlaces.map(s => `<span class="chip">${escapeHtml(s)}</span>`).join('') : '<span style="color:var(--ink-500); font-size:11.5px;">No sub places</span>'}</div>
+          <div class="mini-guard-slot${d.guardName ? ' filled' : ''}" data-client-id="${d.clientId}">${d.guardName ? escapeHtml(d.guardName) : 'Drop a guard here'}</div>
         </div>`).join('');
 
       const hasAny = existingDutiesForDate.length + pendingDuties.length > 0;
@@ -2788,7 +2788,7 @@ function attachHandlers(section) {
         renderPlacesList();
         renderGuardsList();
       } catch (err) {
-        document.getElementById('assignPlacesList').innerHTML = `<p style="color:var(--danger); font-size:13px;">Could not load: ${err.message}</p>`;
+        document.getElementById('assignPlacesList').innerHTML = `<p style="color:var(--danger); font-size:13px;">Could not load: ${escapeHtml(err.message)}</p>`;
         document.getElementById('assignGuardsList').innerHTML = '';
       }
     }
@@ -2967,17 +2967,17 @@ function attachHandlers(section) {
                 ${existingDutiesForDate.map((d, i) => `
                   <tr>
                     <td class="serial-col">${i + 1}</td>
-                    <td><b>${d.guardName}</b> <span style="color:var(--ink-500);">(${d.guardEmpId})</span></td>
-                    <td class="preserve-space">${d.mainPlace}</td>
+                    <td><b>${escapeHtml(d.guardName)}</b> <span style="color:var(--ink-500);">(${escapeHtml(d.guardEmpId)})</span></td>
+                    <td class="preserve-space">${escapeHtml(d.mainPlace)}</td>
                     <td>${(d.subPlaces || []).map(s => `<span class="chip">${s}</span>`).join('')}</td>
                     <td><span class="badge badge-neutral">Already assigned</span></td>
                   </tr>`).join('')}
                 ${pendingDuties.map((d, i) => `
                   <tr>
                     <td class="serial-col">${existingDutiesForDate.length + i + 1}</td>
-                    <td><b>${d.guardName}</b></td>
-                    <td class="preserve-space">${d.mainPlace}</td>
-                    <td>${d.subPlaces.map(s => `<span class="chip">${s}</span>`).join('')}</td>
+                    <td><b>${escapeHtml(d.guardName)}</b></td>
+                    <td class="preserve-space">${escapeHtml(d.mainPlace)}</td>
+                    <td>${d.subPlaces.map(s => `<span class="chip">${escapeHtml(s)}</span>`).join('')}</td>
                     <td><span class="badge badge-amber">New</span></td>
                   </tr>`).join('')}
               </tbody>
@@ -3071,10 +3071,10 @@ function attachHandlers(section) {
                   return `
                   <tr data-id="${a._id}">
                     <td class="serial-col">${startSerial + i + 1}</td>
-                    <td><b>${a.guardName}</b><br><span style="color:var(--ink-500); font-size:11.5px;">${a.guardEmpId}</span></td>
-                    <td class="preserve-space">${a.mainPlace}</td>
+                    <td><b>${escapeHtml(a.guardName)}</b><br><span style="color:var(--ink-500); font-size:11.5px;">${escapeHtml(a.guardEmpId)}</span></td>
+                    <td class="preserve-space">${escapeHtml(a.mainPlace)}</td>
                     <td>${a.subPlaces.map(s => `<span class="chip">${s}</span>`).join('')}</td>
-                    <td><span class="badge badge-amber">${a.dateRange}</span></td>
+                    <td><span class="badge badge-amber">${escapeHtml(a.dateRange)}</span></td>
                     <td><span class="badge ${completed ? 'badge-neutral' : 'badge-success'}">${completed ? 'Completed' : 'Upcoming'}</span></td>
                     <td style="white-space:nowrap; color:var(--ink-300); font-size:12.5px;">${formatDateTime(a.createdAt)}</td>
                     <td>
@@ -3102,7 +3102,7 @@ function attachHandlers(section) {
       fetchDutyAssignmentsViaApi({ search: assignedState.search, date: assignedState.date, page: assignedState.page, limit: assignedState.limit })
         .then(renderAssignedTable)
         .catch(err => {
-          document.getElementById('assignedTableWrap').innerHTML = `<p style="color:var(--danger); font-size:13px;">Could not load from MongoDB: ${err.message}</p>`;
+          document.getElementById('assignedTableWrap').innerHTML = `<p style="color:var(--danger); font-size:13px;">Could not load from MongoDB: ${escapeHtml(err.message)}</p>`;
         });
     }
 
@@ -3137,14 +3137,14 @@ function attachHandlers(section) {
           <label>Guard</label>
           <select id="editAssignGuard">
             <option value="">Select guard</option>
-            ${guardsData.map(g => `<option value="${g._id}" data-emp-id="${g.roll_no}" data-name="${g.first_name}" ${g.roll_no === a.guardEmpId ? 'selected' : ''}>${g.first_name} (${g.roll_no})</option>`).join('')}
+            ${guardsData.map(g => `<option value="${g._id}" data-emp-id="${escapeHtml(g.roll_no)}" data-name="${escapeHtml(g.first_name)}" ${g.roll_no === a.guardEmpId ? 'selected' : ''}>${escapeHtml(g.first_name)} (${escapeHtml(g.roll_no)})</option>`).join('')}
           </select>
         </div>
         <div class="field">
           <label>Main place</label>
           <select id="editAssignPlace">
             <option value="">Select place</option>
-            ${placesData.map(p => `<option value="${p._id}" ${p.mainPlace === a.mainPlace ? 'selected' : ''}>${p.mainPlace}</option>`).join('')}
+            ${placesData.map(p => `<option value="${p._id}" ${p.mainPlace === a.mainPlace ? 'selected' : ''}>${escapeHtml(p.mainPlace)}</option>`).join('')}
           </select>
         </div>
         <div class="field">

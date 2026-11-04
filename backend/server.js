@@ -28,8 +28,11 @@
 
 require('dotenv').config();
 const express = require('express');
+const helmet = require('helmet');
 const path = require('path');
 const connectDB = require('./config/db');
+const { requireAuth } = require('./middleware/auth');
+const { rejectUnsafeBody, loginLimiter, resetLimiter, apiLimiter } = require('./middleware/security');
 
 const authRoutes = require('./routes/auth');
 const passwordResetRoutes = require('./routes/passwordReset');
@@ -43,18 +46,44 @@ const scanSettingRoutes = require('./routes/scanSettings');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json());
-// Serves only ./public/uploads (uploaded images + profile photos) at /uploads/...
-app.use(express.static(path.join(__dirname, 'public')));
+// --- Security hardening ------------------------------------------------
+// Behind Render's proxy the real client IP comes from X-Forwarded-For; this is
+// needed for the rate limiters to see individual users, not the proxy.
+app.set('trust proxy', Number(process.env.TRUST_PROXY ?? 1));
+// "simple" query parsing: ?guardEmpId[$ne]=x stays a harmless literal key
+// instead of becoming a MongoDB operator object.
+app.set('query parser', 'simple');
+app.use(helmet({
+  // Uploaded photos are loaded by the web dashboard / mobile app from here.
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
 
+app.use(express.json());
+app.use(rejectUnsafeBody);
+app.use('/api', apiLimiter);
+
+// Only uploaded photos are public (<img> tags cannot send an Authorization
+// header). File names are unguessable and nothing else is served.
+app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads'), {
+  index: false,
+  dotfiles: 'ignore',
+}));
+
+// Brute-force protection on the password-checking routes.
+app.use('/api/auth/login', loginLimiter);
+app.use('/api/auth/change-password', loginLimiter);
+app.use('/api/auth/forgot-password', resetLimiter);
+
+// Public: login, change-password (needs the current password) and the
+// forgot-password OTP flow. Everything else below needs a valid token.
 app.use('/api/auth', authRoutes);
 app.use('/api/auth/forgot-password', passwordResetRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/duty-places', dutyPlaceRoutes);
-app.use('/api/duty-assignments', dutyAssignmentRoutes);
-app.use('/api/qr-scans', qrScanRoutes);
-app.use('/api/uploaded-images', uploadedImageRoutes);
-app.use('/api/scan-settings', scanSettingRoutes);
+app.use('/api/users', requireAuth, userRoutes);
+app.use('/api/duty-places', requireAuth, dutyPlaceRoutes);
+app.use('/api/duty-assignments', requireAuth, dutyAssignmentRoutes);
+app.use('/api/qr-scans', requireAuth, qrScanRoutes);
+app.use('/api/uploaded-images', requireAuth, uploadedImageRoutes);
+app.use('/api/scan-settings', requireAuth, scanSettingRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', database: 'MongoDB (see /api/health/db for connection state)' });
@@ -72,6 +101,12 @@ app.use('/api', (req, res) => {
 // Final safety net: turn any uncaught error into JSON instead of Express's
 // default HTML error page, so the frontend always gets parseable JSON back.
 app.use((err, req, res, next) => {
+  if (err && err.type === 'entity.parse.failed') {
+    return res.status(400).json({ error: 'Request body is not valid JSON.' });
+  }
+  if (err && err.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'Request is too large.' });
+  }
   console.error(err);
   res.status(500).json({ error: 'Unexpected server error.' });
 });

@@ -44,6 +44,8 @@ function formatHHmm(hhmm) {
   return `${h}:${minute} ${amPm}`;
 }
 
+const { requireRole, ownGuardOrAdmin, selfOrAdminParam } = require('../middleware/auth');
+
 const router = express.Router();
 
 function escapeRegex(s) {
@@ -89,7 +91,7 @@ function dayBoundsUTC(dateStr) {
 //            stat (?date=<today>&limit=1, reading just `total`).
 // Every scan recorded by every guard - the admin's "Get QR Code Data"
 // screen.
-router.get('/', async (req, res) => {
+router.get('/', requireRole('admin'), async (req, res) => {
   try {
     const filter = {};
     const search = (req.query.search || '').trim();
@@ -129,7 +131,7 @@ router.get('/', async (req, res) => {
 //          its after-midnight scans under the day it began - the same rule
 //          the admin's date picker (/coverage) uses. Leave it out for the
 //          guard's full history ("All").
-router.get('/mine', async (req, res) => {
+router.get('/mine', ownGuardOrAdmin, async (req, res) => {
   try {
     // typeof check: Express parses ?guardEmpId[$ne]=x into an object, which
     // would otherwise be passed straight into the Mongo query.
@@ -184,7 +186,7 @@ router.get('/mine', async (req, res) => {
 // highlight a sub place nobody scanned. Every scan of that sub place is
 // included (oldest first), not just the most recent one, so a screen can
 // show the full visit history with serial numbers.
-router.get('/coverage', async (req, res) => {
+router.get('/coverage', ownGuardOrAdmin, async (req, res) => {
   try {
     const dateStr = (req.query.date || '').trim();
     // typeof check: Express parses ?guardEmpId[$ne]=x into an object, which
@@ -270,7 +272,7 @@ router.get('/coverage', async (req, res) => {
 // and the scan is rejected outright unless the scanned text exactly matches
 // one of that assignment's sub places. This is the "only store it if that
 // sub place is actually assigned to this user today" rule.
-router.post('/', async (req, res) => {
+router.post('/', ownGuardOrAdmin, async (req, res) => {
   try {
     const guardEmpId = String(req.body.guardEmpId || '').trim();
     const scannedSubPlace = String(req.body.scannedSubPlace || '').trim();

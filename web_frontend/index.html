@@ -159,7 +159,7 @@
 
     try {
       const user = await loginViaApi(rollNo, password);
-      setCurrentUser(user, password); // password kept (obfuscated, this tab only) so the session can be re-verified later
+      setCurrentUser(user, user.token); // login token only - the password is never stored in the browser
       window.location.href = user.role === 'admin' ? '/admin' : '/user';
     } catch (err) {
       errorText.textContent = err.message || 'Invalid employee ID or password.';

@@ -43,56 +43,56 @@ const MOCK = {
 };
 
 /**
- * Session storage for the logged-in user, plus the password they signed in
- * with - kept only so this tab can silently re-check itself against the
- * server (see verifySessionStillValid below), so that a password changed
- * from another browser/device invalidates this session automatically
- * instead of leaving it logged in with stale credentials.
+ * Session storage for the logged-in user.
  *
- * Honest security note: this is light obfuscation (base64), not real
- * encryption - a secret stored and read back by the same client-side code
- * can never be truly secret, since anyone with devtools access to this
- * session already has everything needed to decode it. The actual
- * protections here are: sessionStorage is wiped when the tab closes, the
- * password never leaves the browser except back to the same login
- * endpoint over HTTPS in production, and the server only ever compares it
- * against a bcrypt hash - it's never stored anywhere in plaintext on disk.
+ * The browser keeps the profile (asg_user) and the signed login token
+ * (asg_token) in sessionStorage - wiped when the tab closes. The password is
+ * NEVER stored: it is sent once to the login endpoint over HTTPS and the
+ * server answers with a token that every later API call sends in an
+ * "Authorization: Bearer ..." header (see apiFetch in api.js). The server
+ * checks that token on every request, so hiding a page in the browser is no
+ * longer what protects the data.
  */
-function _encodePw(pw) {
-  try {
-    return btoa(unescape(encodeURIComponent(pw)));
-  } catch (err) {
-    return '';
-  }
-}
-function _decodePw(encoded) {
-  try {
-    return decodeURIComponent(escape(atob(encoded)));
-  } catch (err) {
-    return '';
-  }
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function currentUser() {
-  const raw = sessionStorage.getItem('asg_user');
-  return raw ? JSON.parse(raw) : null;
+  try {
+    const raw = sessionStorage.getItem('asg_user');
+    return raw ? JSON.parse(raw) : null;
+  } catch (err) {
+    return null;
+  }
 }
 
-/** `password` is optional - pass it at login time; omit it on later updates
+function getAuthToken() {
+  return sessionStorage.getItem('asg_token') || '';
+}
+
+/** `token` is optional - pass it at login time; omit it on later updates
  *  (e.g. refreshing the cached profile) to leave the stored one untouched. */
-function setCurrentUser(user, password) {
-  sessionStorage.setItem('asg_user', JSON.stringify(user));
-  if (password) sessionStorage.setItem('asg_cred', _encodePw(password));
+function setCurrentUser(user, token) {
+  const profile = Object.assign({}, user);
+  delete profile.token;
+  sessionStorage.setItem('asg_user', JSON.stringify(profile));
+  const newToken = token || (user && user.token);
+  if (newToken) sessionStorage.setItem('asg_token', newToken);
 }
 
-function _storedPassword() {
-  const raw = sessionStorage.getItem('asg_cred');
-  return raw ? _decodePw(raw) : null;
+function clearSession() {
+  sessionStorage.removeItem('asg_user');
+  sessionStorage.removeItem('asg_token');
+  sessionStorage.removeItem('asg_cred'); // left over from older versions
 }
 
 function logout() {
-  sessionStorage.removeItem('asg_user');
-  sessionStorage.removeItem('asg_cred');
+  clearSession();
   window.location.href = '/';
 }
 
@@ -112,34 +112,31 @@ async function verifySessionStillValid() {
   const u = currentUser();
   if (!u) return true; // no session at all; requireRole() already sends those to the login page
 
-  const pw = _storedPassword();
-  if (!pw) {
-    // A session with a cached profile but no stored credential (e.g. one
-    // started before this check existed) can't be verified against the
-    // server, so don't trust it - one fresh login fixes it for good.
-    sessionStorage.removeItem('asg_user');
+  if (!getAuthToken()) {
+    // A session without a token (e.g. one started before tokens existed)
+    // can't be verified, so don't trust it - one fresh login fixes it.
+    clearSession();
     alert('Please log in again to continue.');
     window.location.href = '/';
     return false;
   }
 
-  const result = await verifyCredentials(u.roll_no, pw);
+  const result = await verifySessionViaApi();
   if (result.ok === false) {
-    sessionStorage.removeItem('asg_user');
-    sessionStorage.removeItem('asg_cred');
+    clearSession();
     alert(result.message || 'Your session is no longer valid. Please log in again.');
     window.location.href = '/';
     return false;
   }
   if (result.ok === true) {
-    setCurrentUser(result.user); // keep the cached profile fresh; stored password is untouched
+    setCurrentUser(result.user); // keep the cached profile fresh; stored token is untouched
   }
   return true; // valid, or inconclusive (network/server hiccup) - don't punish the user for that
 }
 
 function requireRole(role) {
   const u = currentUser();
-  if (!u || u.role !== role) {
+  if (!u || u.role !== role || !getAuthToken()) {
     window.location.href = '/';
   }
   return u;

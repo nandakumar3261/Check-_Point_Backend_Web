@@ -1,6 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
+const { signToken, requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -10,6 +11,10 @@ router.post('/login', async (req, res) => {
     const { roll_no, password } = req.body;
     if (!roll_no || !password) {
       return res.status(400).json({ error: 'Roll number and password are required.' });
+    }
+    // Only plain strings: stops {"$ne": ...} style objects reaching Mongo/bcrypt.
+    if (typeof roll_no !== 'string' || typeof password !== 'string') {
+      return res.status(400).json({ error: 'Roll number and password must be text.' });
     }
 
     const user = await User.findOne({ roll_no: String(roll_no).trim() });
@@ -26,7 +31,31 @@ router.post('/login', async (req, res) => {
       return res.status(403).json({ error: 'This account has been blocked. Contact an administrator.' });
     }
 
-    // Demo auth only - no session/JWT issuance here yet.
+    // Same fields as before, plus a signed token that every other API call
+    // must send as "Authorization: Bearer <token>".
+    res.json({
+      roll_no: user.roll_no,
+      first_name: user.first_name,
+      gender: user.gender || '',
+      designation: user.designation,
+      mobile: user.mobile,
+      role: user.role,
+      profile_pic: user.profile_pic || '',
+      token: signToken(user),
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error during login.' });
+  }
+});
+
+// GET /api/auth/me  (Authorization: Bearer <token>)
+// Lets the web app silently re-check that the session is still valid: the
+// account exists, is not blocked and the password has not changed elsewhere.
+router.get('/me', requireAuth, async (req, res) => {
+  try {
+    const user = await User.findOne({ roll_no: req.user.roll_no }).select('-password');
+    if (!user) return res.status(401).json({ error: 'Your session is no longer valid. Please log in again.' });
     res.json({
       roll_no: user.roll_no,
       first_name: user.first_name,
@@ -38,7 +67,7 @@ router.post('/login', async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Server error during login.' });
+    res.status(500).json({ error: 'Server error fetching your account.' });
   }
 });
 

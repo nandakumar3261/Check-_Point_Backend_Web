@@ -5,6 +5,8 @@ const path = require('path');
 const multer = require('multer');
 const User = require('../models/User');
 
+const { requireRole, ownGuardOrAdmin, selfOrAdminParam } = require('../middleware/auth');
+
 const router = express.Router();
 
 const ALLOWED_ROLES = ['admin', 'security'];
@@ -30,9 +32,11 @@ function normalizeGender(value) {
 router.get('/', async (req, res) => {
   try {
     const filter = {};
-    if (req.query.role) filter.role = req.query.role;
+    if (typeof req.query.role === 'string' && ALLOWED_ROLES.includes(req.query.role)) {
+      filter.role = req.query.role;
+    }
 
-    const search = (req.query.search || '').trim();
+    const search = (typeof req.query.search === 'string' ? req.query.search : '').trim();
     if (search) {
       const re = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
       filter.$or = [{ first_name: re }, { roll_no: re }, { mobile: re }, { designation: re }];
@@ -64,7 +68,7 @@ router.get('/', async (req, res) => {
 // One account looked up by its exact roll number (never includes the password
 // hash). Used by the mobile app's Profile screen to show the account's current
 // details straight from MongoDB rather than the copy saved at login.
-router.get('/by-roll/:roll_no', async (req, res) => {
+router.get('/by-roll/:roll_no', selfOrAdminParam('roll_no'), async (req, res) => {
   try {
     const user = await User.findOne({ roll_no: String(req.params.roll_no).trim() }).select('-password');
     if (!user) {
@@ -133,7 +137,7 @@ const profileUpload = multer({
   },
 }).single('image');
 
-router.post('/by-roll/:roll_no/profile-pic', (req, res) => {
+router.post('/by-roll/:roll_no/profile-pic', selfOrAdminParam('roll_no'), (req, res) => {
   profileUpload(req, res, async (uploadErr) => {
     if (uploadErr) {
       const msg = uploadErr.code === 'LIMIT_FILE_SIZE'
@@ -175,7 +179,7 @@ router.post('/by-roll/:roll_no/profile-pic', (req, res) => {
 
 // POST /api/users  { roll_no, password, first_name, gender, designation, mobile, role }
 // Used by the admin "Add Security" form (single account).
-router.post('/', async (req, res) => {
+router.post('/', requireRole('admin'), async (req, res) => {
   try {
     const { roll_no, password, first_name, gender, designation, mobile, role } = req.body;
 
@@ -225,7 +229,7 @@ router.post('/', async (req, res) => {
 // Each row is validated and inserted independently - one bad row does not
 // stop the rest. Returns a per-row summary so the frontend can show exactly
 // what happened.
-router.post('/bulk', async (req, res) => {
+router.post('/bulk', requireRole('admin'), async (req, res) => {
   try {
     const rows = Array.isArray(req.body.users) ? req.body.users : [];
     if (rows.length === 0) {
@@ -294,7 +298,7 @@ router.post('/bulk', async (req, res) => {
 // PUT /api/users/:id  { first_name, gender?, designation, mobile, role, password? }
 // Edits an existing account. roll_no is not editable here (it's the login
 // key). password is optional - leave it out to keep the current one.
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireRole('admin'), async (req, res) => {
   try {
     const { first_name, gender, designation, mobile, role, password } = req.body;
 
@@ -336,7 +340,7 @@ router.put('/:id', async (req, res) => {
 // PATCH /api/users/:id/toggle-block
 // Flips the "blocked" flag. A blocked account can no longer log in
 // (see routes/auth.js) but its data is kept.
-router.patch('/:id/toggle-block', async (req, res) => {
+router.patch('/:id/toggle-block', requireRole('admin'), async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) {
@@ -352,7 +356,7 @@ router.patch('/:id/toggle-block', async (req, res) => {
 });
 
 // DELETE /api/users/:id
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireRole('admin'), async (req, res) => {
   try {
     const user = await User.findByIdAndDelete(req.params.id);
     if (!user) {

@@ -4,6 +4,8 @@ const express = require('express');
 const multer = require('multer');
 const UploadedImage = require('../models/UploadedImage');
 
+const { requireRole, ownGuardOrAdmin, selfOrAdminParam } = require('../middleware/auth');
+
 const router = express.Router();
 
 // ---------------------------------------------------------------------
@@ -125,6 +127,11 @@ router.post('/', upload.single('image'), async (req, res) => {
       removeUploadedFile(req.file.path);
       return res.status(400).json({ error: 'guardEmpId and guardName are required.' });
     }
+    // A guard can only upload as themselves (admins may upload for anyone).
+    if (req.user && req.user.role !== 'admin' && guardEmpId !== req.user.roll_no) {
+      removeUploadedFile(req.file.path);
+      return res.status(403).json({ error: 'You can only upload images as yourself.', code: 'FORBIDDEN' });
+    }
 
     if (req.file.size < MIN_IMAGE_SIZE) {
       removeUploadedFile(req.file.path);
@@ -167,7 +174,7 @@ router.post('/', upload.single('image'), async (req, res) => {
 //                tab always sends it, so a guard never sees anyone else's.
 // Without guardEmpId: every photo from every guard/admin, most recent
 // first - the admin's "Get Upload Images" tab.
-router.get('/', async (req, res) => {
+router.get('/', ownGuardOrAdmin, async (req, res) => {
   try {
     const filter = {};
     const guardEmpId = String(req.query.guardEmpId || '').trim();

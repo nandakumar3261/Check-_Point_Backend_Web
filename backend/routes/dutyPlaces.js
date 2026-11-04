@@ -1,6 +1,8 @@
 const express = require('express');
 const DutyPlace = require('../models/DutyPlace');
 
+const { requireRole } = require('../middleware/auth');
+
 const router = express.Router();
 
 function escapeRegex(s) {
@@ -96,7 +98,7 @@ router.get('/options', async (req, res) => {
 
 // POST /api/duty-places  { mainPlace, subPlaces: [name, ...] }
 // Creates a new main place with one or more sub-places.
-router.post('/', async (req, res) => {
+router.post('/', requireRole('admin'), async (req, res) => {
   try {
     const mainPlace = String(req.body.mainPlace || '').trim();
     const names = normalizeNames(req.body.subPlaces);
@@ -127,7 +129,7 @@ router.post('/', async (req, res) => {
 
 // POST /api/duty-places/:id/sub-places  { subPlaces: [name, ...] }
 // Adds one or more new sub-places to an existing main place.
-router.post('/:id/sub-places', async (req, res) => {
+router.post('/:id/sub-places', requireRole('admin'), async (req, res) => {
   try {
     const names = normalizeNames(req.body.subPlaces);
     if (names.length === 0) {
@@ -156,7 +158,7 @@ router.post('/:id/sub-places', async (req, res) => {
 
 // PUT /api/duty-places/:id  { mainPlace, subPlaces: [name, ...] }
 // Edits the main place name and/or its full list of sub-place names.
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireRole('admin'), async (req, res) => {
   try {
     const mainPlace = String(req.body.mainPlace || '').trim();
     const names = normalizeNames(req.body.subPlaces);
@@ -197,7 +199,7 @@ router.put('/:id', async (req, res) => {
 
 // DELETE /api/duty-places/:id
 // Removes the main place and all of its sub-places.
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireRole('admin'), async (req, res) => {
   try {
     const doc = await DutyPlace.findByIdAndDelete(req.params.id);
     if (!doc) {

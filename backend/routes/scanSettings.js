@@ -1,6 +1,8 @@
 const express = require('express');
 const ScanSetting = require('../models/ScanSetting');
 
+const { requireRole } = require('../middleware/auth');
+
 const router = express.Router();
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -21,7 +23,7 @@ router.get('/', async (req, res) => {
 // PUT /api/scan-settings  { from: "HH:mm", to: "HH:mm" }  ->  saves the
 // window, creating it on the first save and overwriting it after that -
 // there is only ever one of these documents.
-router.put('/', async (req, res) => {
+router.put('/', requireRole('admin'), async (req, res) => {
   try {
     const { from, to } = req.body;
     if (!TIME_PATTERN.test(from) || !TIME_PATTERN.test(to)) {

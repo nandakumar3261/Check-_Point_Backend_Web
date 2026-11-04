@@ -29,6 +29,37 @@ async function readJsonResponse(res) {
   return body;
 }
 
+/**
+ * fetch() for every protected endpoint: adds the login token and, if the
+ * server says the session is no longer valid (expired, password changed,
+ * account blocked), clears it and sends the person back to the login page.
+ * Login / change-password / forgot-password use plain fetch() on purpose.
+ */
+let _sessionEnding = false;
+async function apiFetch(url, options) {
+  const opts = Object.assign({}, options);
+  const headers = new Headers(opts.headers || {});
+  const token = getAuthToken();
+  if (token) headers.set('Authorization', 'Bearer ' + token);
+  opts.headers = headers;
+
+  const res = await fetch(url, opts);
+  if (token && !_sessionEnding) {
+    let ended = res.status === 401;
+    if (res.status === 403) {
+      // 403 also means "not allowed to do this" - only a blocked account ends the session.
+      try { ended = (await res.clone().json()).code === 'BLOCKED'; } catch (err) { ended = false; }
+    }
+    if (ended) {
+      _sessionEnding = true;
+      clearSession();
+      alert('Your session has expired or the account is no longer active. Please log in again.');
+      window.location.href = '/';
+    }
+  }
+  return res;
+}
+
 async function loginViaApi(roll_no, password) {
   const res = await fetch('/api/auth/login', {
     method: 'POST',
@@ -39,28 +70,24 @@ async function loginViaApi(roll_no, password) {
 }
 
 /**
- * Re-checks a roll_no/password pair against the server WITHOUT throwing -
+ * Re-checks the current login token against the server WITHOUT throwing -
  * used to silently revalidate an existing session (is the account still
- * active, does the stored password still match what's on the server right
- * now), as opposed to loginViaApi() which is for the interactive login form
- * and throws so the form can show the error inline.
+ * active, was the password changed elsewhere), as opposed to loginViaApi()
+ * which is for the interactive login form and throws so the form can show
+ * the error inline.
  *
  * Returns:
  *   { ok: true,  user }     - still valid; `user` is the fresh profile
- *   { ok: false, message }  - rejected by the server (wrong password, i.e.
- *                             it was changed elsewhere, or account blocked)
+ *   { ok: false, message }  - rejected by the server (token expired, password
+ *                             changed, or account blocked)
  *   { ok: null }            - inconclusive (server/network hiccup) - the
  *                             caller should NOT log the person out for this,
  *                             only for an explicit { ok: false }
  */
-async function verifyCredentials(roll_no, password) {
+async function verifySessionViaApi() {
   let res;
   try {
-    res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ roll_no, password }),
-    });
+    res = await fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + getAuthToken() } });
   } catch (err) {
     return { ok: null }; // network error - can't confirm either way
   }
@@ -90,12 +117,12 @@ async function fetchUsersViaApi({ role, search, page = 1, limit = 10 } = {}) {
   params.set('page', page);
   params.set('limit', limit);
 
-  const res = await fetch(`/api/users?${params.toString()}`);
+  const res = await apiFetch(`/api/users?${params.toString()}`);
   return readJsonResponse(res); // { data, total, page, limit, totalPages }
 }
 
 async function addUserViaApi(payload) {
-  const res = await fetch('/api/users', {
+  const res = await apiFetch('/api/users', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -104,7 +131,7 @@ async function addUserViaApi(payload) {
 }
 
 async function bulkAddUsersViaApi(users) {
-  const res = await fetch('/api/users/bulk', {
+  const res = await apiFetch('/api/users/bulk', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ users }),
@@ -113,7 +140,7 @@ async function bulkAddUsersViaApi(users) {
 }
 
 async function updateUserViaApi(id, payload) {
-  const res = await fetch(`/api/users/${encodeURIComponent(id)}`, {
+  const res = await apiFetch(`/api/users/${encodeURIComponent(id)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -122,12 +149,12 @@ async function updateUserViaApi(id, payload) {
 }
 
 async function toggleBlockUserViaApi(id) {
-  const res = await fetch(`/api/users/${encodeURIComponent(id)}/toggle-block`, { method: 'PATCH' });
+  const res = await apiFetch(`/api/users/${encodeURIComponent(id)}/toggle-block`, { method: 'PATCH' });
   return readJsonResponse(res); // { _id, roll_no, blocked }
 }
 
 async function deleteUserViaApi(id) {
-  const res = await fetch(`/api/users/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  const res = await apiFetch(`/api/users/${encodeURIComponent(id)}`, { method: 'DELETE' });
   return readJsonResponse(res);
 }
 
@@ -141,12 +168,12 @@ async function fetchDutyPlacesViaApi({ search, page = 1, limit = 10 } = {}) {
   params.set('page', page);
   params.set('limit', limit);
 
-  const res = await fetch(`/api/duty-places?${params.toString()}`);
+  const res = await apiFetch(`/api/duty-places?${params.toString()}`);
   return readJsonResponse(res); // { data, total, page, limit, totalPages }
 }
 
 async function fetchDutyPlaceOptionsViaApi() {
-  const res = await fetch('/api/duty-places/options');
+  const res = await apiFetch('/api/duty-places/options');
   return readJsonResponse(res); // { data }
 }
 
@@ -157,12 +184,12 @@ async function fetchDutyPlaceOptionsViaApi() {
  * currently covered by a duty assignment.
  */
 async function fetchDutyPlaceStatsViaApi() {
-  const res = await fetch('/api/duty-places/stats');
+  const res = await apiFetch('/api/duty-places/stats');
   return readJsonResponse(res); // { totalMainPlaces, totalSubPlaces }
 }
 
 async function addDutyPlaceViaApi(payload) {
-  const res = await fetch('/api/duty-places', {
+  const res = await apiFetch('/api/duty-places', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -171,7 +198,7 @@ async function addDutyPlaceViaApi(payload) {
 }
 
 async function addSubPlacesViaApi(id, subPlaces) {
-  const res = await fetch(`/api/duty-places/${encodeURIComponent(id)}/sub-places`, {
+  const res = await apiFetch(`/api/duty-places/${encodeURIComponent(id)}/sub-places`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ subPlaces }),
@@ -180,7 +207,7 @@ async function addSubPlacesViaApi(id, subPlaces) {
 }
 
 async function updateDutyPlaceViaApi(id, payload) {
-  const res = await fetch(`/api/duty-places/${encodeURIComponent(id)}`, {
+  const res = await apiFetch(`/api/duty-places/${encodeURIComponent(id)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -189,7 +216,7 @@ async function updateDutyPlaceViaApi(id, payload) {
 }
 
 async function deleteDutyPlaceViaApi(id) {
-  const res = await fetch(`/api/duty-places/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  const res = await apiFetch(`/api/duty-places/${encodeURIComponent(id)}`, { method: 'DELETE' });
   return readJsonResponse(res);
 }
 
@@ -204,7 +231,7 @@ async function fetchDutyAssignmentsViaApi({ search, date, page = 1, limit = 10 }
   params.set('page', page);
   params.set('limit', limit);
 
-  const res = await fetch(`/api/duty-assignments?${params.toString()}`);
+  const res = await apiFetch(`/api/duty-assignments?${params.toString()}`);
   return readJsonResponse(res); // { data, total, page, limit, totalPages }
 }
 
@@ -214,12 +241,12 @@ async function fetchDutyAssignmentsViaApi({ search, date, page = 1, limit = 10 }
  * GET /api/duty-assignments/stats).
  */
 async function fetchDutyAssignmentStatsViaApi() {
-  const res = await fetch('/api/duty-assignments/stats');
+  const res = await apiFetch('/api/duty-assignments/stats');
   return readJsonResponse(res); // { totalAssignments, totalSubPlaces }
 }
 
 async function bulkAssignDutiesViaApi(payload) {
-  const res = await fetch('/api/duty-assignments/bulk', {
+  const res = await apiFetch('/api/duty-assignments/bulk', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -228,7 +255,7 @@ async function bulkAssignDutiesViaApi(payload) {
 }
 
 async function updateDutyAssignmentViaApi(id, payload) {
-  const res = await fetch(`/api/duty-assignments/${encodeURIComponent(id)}`, {
+  const res = await apiFetch(`/api/duty-assignments/${encodeURIComponent(id)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -237,7 +264,7 @@ async function updateDutyAssignmentViaApi(id, payload) {
 }
 
 async function deleteDutyAssignmentViaApi(id) {
-  const res = await fetch(`/api/duty-assignments/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  const res = await apiFetch(`/api/duty-assignments/${encodeURIComponent(id)}`, { method: 'DELETE' });
   return readJsonResponse(res);
 }
 
@@ -248,7 +275,7 @@ async function deleteDutyAssignmentViaApi(id) {
  */
 async function fetchMyDutiesViaApi(guardEmpId) {
   const params = new URLSearchParams({ guardEmpId });
-  const res = await fetch(`/api/duty-assignments/mine?${params.toString()}`);
+  const res = await apiFetch(`/api/duty-assignments/mine?${params.toString()}`);
   return readJsonResponse(res); // { data, total }
 }
 
@@ -263,7 +290,7 @@ async function fetchQrScansViaApi({ search, date, page = 1, limit = 10 } = {}) {
   params.set('page', page);
   params.set('limit', limit);
 
-  const res = await fetch(`/api/qr-scans?${params.toString()}`);
+  const res = await apiFetch(`/api/qr-scans?${params.toString()}`);
   return readJsonResponse(res); // { data, total, page, limit, totalPages }
 }
 
@@ -275,7 +302,7 @@ async function fetchMyQrScansViaApi({ guardEmpId, date } = {}) {
   const params = new URLSearchParams();
   params.set('guardEmpId', guardEmpId);
   if (date) params.set('date', date);
-  const res = await fetch(`/api/qr-scans/mine?${params.toString()}`);
+  const res = await apiFetch(`/api/qr-scans/mine?${params.toString()}`);
   return readJsonResponse(res); // { data, total }
 }
 
@@ -292,7 +319,7 @@ async function fetchQrScanCoverageViaApi({ date, guardEmpId } = {}) {
   if (date) params.set('date', date);
   if (guardEmpId) params.set('guardEmpId', guardEmpId);
 
-  const res = await fetch(`/api/qr-scans/coverage?${params.toString()}`);
+  const res = await apiFetch(`/api/qr-scans/coverage?${params.toString()}`);
   return readJsonResponse(res); // { data, total }
 }
 
@@ -310,7 +337,7 @@ async function uploadImageViaApi({ file, comment, guardEmpId, guardName }) {
   formData.append('guardEmpId', guardEmpId);
   formData.append('guardName', guardName);
 
-  const res = await fetch('/api/uploaded-images', { method: 'POST', body: formData });
+  const res = await apiFetch('/api/uploaded-images', { method: 'POST', body: formData });
   return readJsonResponse(res);
 }
 
@@ -323,7 +350,7 @@ async function fetchUploadedImagesViaApi({ search, guardEmpId, page = 1, limit =
   params.set('page', page);
   params.set('limit', limit);
 
-  const res = await fetch(`/api/uploaded-images?${params.toString()}`);
+  const res = await apiFetch(`/api/uploaded-images?${params.toString()}`);
   return readJsonResponse(res); // { data, total, page, limit, totalPages }
 }
 
@@ -334,7 +361,7 @@ async function fetchUploadedImagesViaApi({ search, guardEmpId, page = 1, limit =
 async function uploadProfilePicViaApi(rollNo, file) {
   const formData = new FormData();
   formData.append('image', file);
-  const res = await fetch(`/api/users/by-roll/${encodeURIComponent(rollNo)}/profile-pic`, {
+  const res = await apiFetch(`/api/users/by-roll/${encodeURIComponent(rollNo)}/profile-pic`, {
     method: 'POST',
     body: formData,
   });
@@ -348,12 +375,12 @@ async function uploadProfilePicViaApi(rollNo, file) {
  * for display.
  */
 async function fetchScanTimeViaApi() {
-  const res = await fetch('/api/scan-settings');
+  const res = await apiFetch('/api/scan-settings');
   return readJsonResponse(res); // { from, to } - both null if never saved
 }
 
 async function saveScanTimeViaApi(from, to) {
-  const res = await fetch('/api/scan-settings', {
+  const res = await apiFetch('/api/scan-settings', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ from, to }),

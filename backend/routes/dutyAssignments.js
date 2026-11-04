@@ -1,6 +1,8 @@
 const express = require('express');
 const DutyAssignment = require('../models/DutyAssignment');
 
+const { requireRole, ownGuardOrAdmin, selfOrAdminParam } = require('../middleware/auth');
+
 const router = express.Router();
 
 function escapeRegex(s) {
@@ -58,7 +60,7 @@ function dutyStatus(dutyDate) {
 // assignments cover between them (each assignment's subPlaces.length,
 // summed) - e.g. 12 assignments might cover 37 sub places between them.
 // Not date-scoped, matching the existing "Active assignments" total.
-router.get('/stats', async (req, res) => {
+router.get('/stats', requireRole('admin'), async (req, res) => {
   try {
     const [totalAssignments, subPlaceAgg] = await Promise.all([
       DutyAssignment.countDocuments({}),
@@ -79,7 +81,7 @@ router.get('/stats', async (req, res) => {
 //            falls on that calendar day (used by the "Show Assigned Duties"
 //            date filter and by the Assign Duty board to look up what's
 //            already scheduled for a chosen date)
-router.get('/', async (req, res) => {
+router.get('/', requireRole('admin'), async (req, res) => {
   try {
     const filter = {};
     const search = (req.query.search || '').trim();
@@ -122,7 +124,7 @@ router.get('/', async (req, res) => {
 // `date` is optional - when given, restricts the result to the (at most one)
 // duty whose dutyDate falls on that calendar day, powering the Home screen's
 // date picker (today or an earlier date).
-router.get('/mine', async (req, res) => {
+router.get('/mine', ownGuardOrAdmin, async (req, res) => {
   try {
     // typeof check: Express parses ?guardEmpId[$ne]=x into an object, which
     // would otherwise be passed straight into the Mongo query.
@@ -158,7 +160,7 @@ router.get('/mine', async (req, res) => {
 // independently (same pattern as /api/users/bulk) - one bad or duplicate
 // row does not stop the rest. A guard can appear only once per batch, and
 // only once per dateRange across the whole database.
-router.post('/bulk', async (req, res) => {
+router.post('/bulk', requireRole('admin'), async (req, res) => {
   try {
     const dateRange = computeDateRange(req.body.dutyDate);
     if (!dateRange) {
@@ -242,7 +244,7 @@ function isCompleted(dutyDate) {
 }
 
 // PUT /api/duty-assignments/:id  { guardEmpId, guardName, dutyPlaceId, mainPlace, subPlaces, dutyDate }
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireRole('admin'), async (req, res) => {
   try {
     const guardEmpId = String(req.body.guardEmpId || '').trim();
     const guardName = String(req.body.guardName || '').trim();
@@ -293,7 +295,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE /api/duty-assignments/:id
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireRole('admin'), async (req, res) => {
   try {
     const doc = await DutyAssignment.findById(req.params.id);
     if (!doc) {
