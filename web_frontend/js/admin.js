@@ -329,19 +329,20 @@ const renderers = {
       <div class="two-col with-or">
         <div class="card">
           <div class="card-title">New account</div>
-          <form id="addGuardForm">
+          <form id="addGuardForm" novalidate>
             <div class="form-grid">
-              <div class="field"><label>Full name</label><input required name="first_name" /></div>
-              <div class="field"><label>Roll No</label><input required name="roll_no" /></div>
-              <div class="field"><label>Password</label><input required type="text" name="password" /></div>
+              <div class="field"><label>Full name</label><input required name="first_name" maxlength="50" autocomplete="off" /><div class="error-text field-error" data-for="first_name"></div></div>
+              <div class="field"><label>Roll No</label><input required name="roll_no" maxlength="20" autocomplete="off" /><div class="error-text field-error" data-for="roll_no"></div></div>
+              <div class="field"><label>Password</label><input required type="text" name="password" maxlength="64" autocomplete="off" /><div class="error-text field-error" data-for="password"></div></div>
               <div class="field">
                 <label>Role</label>
                 <select name="role" required>
                   <option value="security" selected>Security Guard</option>
                   <option value="admin">Admin</option>
                 </select>
+                <div class="error-text field-error" data-for="role"></div>
               </div>
-              <div class="field"><label>Mobile</label><input required name="mobile" /></div>
+              <div class="field"><label>Mobile</label><input required name="mobile" type="tel" inputmode="numeric" maxlength="10" placeholder="10-digit number" autocomplete="off" /><div class="error-text field-error" data-for="mobile"></div></div>
               <div class="field">
                 <label>Gender</label>
                 <select name="gender" required>
@@ -350,8 +351,9 @@ const renderers = {
                   <option value="Female">Female</option>
                   <option value="Other">Other</option>
                 </select>
+                <div class="error-text field-error" data-for="gender"></div>
               </div>
-              <div class="field" style="grid-column: 1 / -1;"><label>Designation</label><input name="designation" placeholder="Security Guard" /></div>
+              <div class="field" style="grid-column: 1 / -1;"><label>Designation</label><input required name="designation" maxlength="50" placeholder="Security Guard" autocomplete="off" /><div class="error-text field-error" data-for="designation"></div></div>
               <div class="field" style="grid-column: 1 / -1;">
                 <label>Profile Pic <span style="color:var(--ink-500); font-weight:400;">(optional)</span></label>
                 <div style="display:flex; align-items:center; gap:12px;">
@@ -897,7 +899,7 @@ function attachHandlers(section) {
         }
 
         if (r.isNewGroup) {
-          html.push(`<td class="serial-col" rowspan="${groupSpan}" style="vertical-align:top;">${r.groupIndex}</td>`);
+          html.push(`<td class="serial-col grp-first" rowspan="${groupSpan}" style="vertical-align:top;">${r.groupIndex}</td>`);
         }
         if (r.isNewGuard) {
           html.push(`<td rowspan="${guardSpan}" style="vertical-align:top;">${r.guardName} ( ${r.guardEmpId} )</td>`);
@@ -1582,19 +1584,104 @@ function attachHandlers(section) {
       reader.readAsDataURL(file);
     });
 
-    document.getElementById('addGuardForm').addEventListener('submit', async (e) => {
+    // ---- Add-account validation ----
+    // Every field is required except the profile photo. Password rules match
+    // the Change Password screen (7+ chars, an uppercase letter, a number
+    // and a special character); mobile must be a 10-digit Indian number.
+    const addGuardForm = document.getElementById('addGuardForm');
+
+    function validateAddGuard(v) {
+      const errs = {};
+      const name = v.first_name.trim();
+      if (!name) errs.first_name = 'Full name is required.';
+      else if (name.length < 2) errs.first_name = 'Full name must be at least 2 characters.';
+      else if (!/^[A-Za-z][A-Za-z .'-]*$/.test(name)) errs.first_name = 'Use letters, spaces, . \' or - only.';
+
+      const roll = v.roll_no.trim();
+      if (!roll) errs.roll_no = 'Roll No is required.';
+      else if (!/^[A-Za-z0-9_-]{2,20}$/.test(roll)) errs.roll_no = 'Roll No must be 2-20 letters, numbers, - or _ (no spaces).';
+
+      const pwd = v.password;
+      if (!pwd) errs.password = 'Password is required.';
+      else if (/\s/.test(pwd)) errs.password = 'Password cannot contain spaces.';
+      else if (pwd.length < 7) errs.password = 'Password must be at least 7 characters.';
+      else if (!/[A-Z]/.test(pwd)) errs.password = 'Password needs at least one uppercase letter.';
+      else if (!/[0-9]/.test(pwd)) errs.password = 'Password needs at least one number.';
+      else if (!/[^A-Za-z0-9\s]/.test(pwd)) errs.password = 'Password needs at least one special character (e.g. @ # $ !).';
+
+      if (!v.role) errs.role = 'Please select a role.';
+
+      const mob = v.mobile.trim();
+      if (!mob) errs.mobile = 'Mobile number is required.';
+      else if (!/^\d+$/.test(mob)) errs.mobile = 'Mobile number must contain digits only.';
+      else if (mob.length !== 10) errs.mobile = 'Mobile number must be exactly 10 digits.';
+      else if (!/^[6-9]/.test(mob)) errs.mobile = 'Mobile number must start with 6, 7, 8 or 9.';
+
+      if (!v.gender) errs.gender = 'Please select a gender.';
+
+      const des = v.designation.trim();
+      if (!des) errs.designation = 'Designation is required.';
+      else if (des.length < 2) errs.designation = 'Designation must be at least 2 characters.';
+      return errs;
+    }
+
+    function showAddGuardErrors(errs) {
+      addGuardForm.querySelectorAll('.field-error').forEach((box) => {
+        const msg = errs[box.dataset.for] || '';
+        box.textContent = msg;
+        const input = addGuardForm.elements[box.dataset.for];
+        if (input) input.classList.toggle('input-invalid', !!msg);
+      });
+    }
+
+    function readAddGuard() {
+      const f = new FormData(addGuardForm);
+      const out = {};
+      ['first_name', 'roll_no', 'password', 'role', 'mobile', 'gender', 'designation']
+        .forEach((k) => { out[k] = (f.get(k) || '').toString(); });
+      return out;
+    }
+
+    // Mobile: digits only as you type
+    addGuardForm.elements.mobile.addEventListener('input', (ev) => {
+      ev.target.value = ev.target.value.replace(/\D/g, '').slice(0, 10);
+    });
+    // Clear / re-check a field's message live once the user starts fixing it
+    addGuardForm.querySelectorAll('input, select').forEach((el) => {
+      if (el.type === 'file') return;
+      el.addEventListener('input', () => {
+        const box = addGuardForm.querySelector(`.field-error[data-for="${el.name}"]`);
+        if (!box || !box.textContent) return;
+        const msg = validateAddGuard(readAddGuard())[el.name] || '';
+        box.textContent = msg;
+        el.classList.toggle('input-invalid', !!msg);
+      });
+    });
+
+    addGuardForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const errBox = document.getElementById('addGuardError');
       errBox.textContent = '';
-      const f = new FormData(e.target);
+      const okPrev0 = document.getElementById('addGuardSuccess');
+      if (okPrev0) okPrev0.textContent = '';
+
+      const values = readAddGuard();
+      const errs = validateAddGuard(values);
+      showAddGuardErrors(errs);
+      const firstBad = Object.keys(errs)[0];
+      if (firstBad) {
+        addGuardForm.elements[firstBad].focus();
+        return;
+      }
+
       const payload = {
-        first_name: f.get('first_name'),
-        roll_no: f.get('roll_no'),
-        password: f.get('password'),
-        role: f.get('role'),
-        mobile: f.get('mobile'),
-        gender: f.get('gender'),
-        designation: f.get('designation') || 'Security Guard',
+        first_name: values.first_name.trim().replace(/\s+/g, ' '),
+        roll_no: values.roll_no.trim(),
+        password: values.password,
+        role: values.role,
+        mobile: values.mobile.trim(),
+        gender: values.gender,
+        designation: values.designation.trim(),
       };
       const okPrev = document.getElementById('addGuardSuccess');
       if (okPrev) okPrev.textContent = '';
@@ -1620,6 +1707,7 @@ function attachHandlers(section) {
         const okBox = document.getElementById('addGuardSuccess');
         if (okBox) okBox.textContent = `Account created for ${saved.first_name} (${saved.roll_no}).`;
         e.target.reset();
+        showAddGuardErrors({});
         resetNewGuardPic();
       } catch (err) {
         errBox.textContent = err.message;
@@ -1882,7 +1970,7 @@ function attachHandlers(section) {
             </select>
           </div>
           <div class="field"><label>Designation</label><input name="designation" value="${u.designation}" /></div>
-          <div class="field"><label>Mobile</label><input required name="mobile" value="${u.mobile}" /></div>
+          <div class="field"><label>Mobile</label><input required name="mobile" type="tel" inputmode="numeric" maxlength="10" value="${u.mobile}" /></div>
           <div class="field">
             <label>Role</label>
             <select name="role">
@@ -1911,6 +1999,15 @@ function attachHandlers(section) {
         };
         const pwd = f.get('password');
         if (pwd && pwd.trim()) payload.password = pwd.trim();
+
+        const editErr = document.getElementById('editUserError');
+        editErr.textContent = '';
+        if (!payload.first_name.trim()) { editErr.textContent = 'Full name is required.'; return; }
+        if (!/^[6-9]\d{9}$/.test((payload.mobile || '').trim())) { editErr.textContent = 'Mobile must be a 10-digit number starting with 6, 7, 8 or 9.'; return; }
+        if (!(payload.designation || '').trim()) { editErr.textContent = 'Designation is required.'; return; }
+        if (payload.password && !/^(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9\s])\S{7,64}$/.test(payload.password)) {
+          editErr.textContent = 'Password needs 7+ characters with an uppercase letter, a number and a special character.'; return;
+        }
 
         const submitBtn = e.target.querySelector('button[type="submit"]');
         submitBtn.disabled = true;

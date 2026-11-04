@@ -116,6 +116,45 @@ const DUTY_SECTIONS = ['home'];
 let currentSection = 'home';
 
 const dutyState = { loaded: false, error: null, data: [] };
+
+// The QR-scan window shown in the Home "Reminder". It is the global setting
+// the admin saves under Assign Duty -> Set Scan Time (GET /api/scan-settings),
+// so the reminder always matches what the server actually enforces.
+const scanState = { loaded: false, error: null, from: null, to: null };
+
+async function loadScanWindow() {
+  try {
+    const res = await fetchScanTimeViaApi(); // { from, to } - 24h "HH:mm", both null if never saved
+    scanState.from = res.from || null;
+    scanState.to = res.to || null;
+    scanState.error = null;
+    scanState.loaded = true;
+  } catch (err) {
+    scanState.error = err.message || 'Could not load the scan time.';
+  }
+}
+
+// "18:00" -> "6:00 PM"
+function formatTime12(hhmm) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || ''));
+  if (!m) return String(hhmm || '');
+  let h = Number(m[1]);
+  const amPm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return `${h}:${m[2]} ${amPm}`;
+}
+
+function reminderText() {
+  if (!scanState.loaded) {
+    return scanState.error
+      ? `<span style="color:var(--danger);">Couldn't load the scan time: ${esc(scanState.error)}</span>`
+      : 'Loading scan time…';
+  }
+  if (!scanState.from || !scanState.to) {
+    return 'The admin has not set a QR scan time yet.';
+  }
+  return `QR scanning is only accepted between <strong>${esc(formatTime12(scanState.from))}</strong> and <strong>${esc(formatTime12(scanState.to))}</strong>. Scans outside this window will be rejected.`;
+}
 let dutyLoadSeq = 0; // ignore out-of-order responses if the guard clicks around quickly
 
 async function loadMyDuties() {
@@ -153,7 +192,9 @@ function render(section) {
   paint(section);
 
   if (DUTY_SECTIONS.includes(section)) {
-    loadMyDuties().then(() => {
+    const jobs = [loadMyDuties()];
+    if (section === 'home') jobs.push(loadScanWindow()); // Reminder text from the database
+    Promise.all(jobs).then(() => {
       if (currentSection === section) paint(section); // still on this page -> show fresh data
     });
   }
@@ -264,26 +305,31 @@ function dutySection() {
   const rangeEnd = Math.min(start + dutyPageSize, total);
 
   return `
-    <div style="display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:12px; margin-bottom:14px;">
-      <div style="display:flex; align-items:center; gap:8px;">
-        <label for="dutyPageSize" style="font-size:12.5px; color:var(--ink-500);">Rows per page</label>
-        <select id="dutyPageSize" class="pill-select">
-          ${[10, 20, 50, 100].map(n => `<option value="${n}" ${n === dutyPageSize ? 'selected' : ''}>${n}</option>`).join('')}
-        </select>
+    <div class="card duty-card">
+      <div class="duty-card-head">
+        <div class="duty-card-title"><h2>My Duties</h2><p>Duties your admin has assigned to you.</p></div>
+        <div class="duty-card-controls">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <label for="dutyPageSize" style="font-size:12.5px; color:var(--ink-500);">Rows per page</label>
+          <select id="dutyPageSize" class="pill-select">
+            ${[10, 20, 50, 100].map(n => `<option value="${n}" ${n === dutyPageSize ? 'selected' : ''}>${n}</option>`).join('')}
+          </select>
+        </div>
+        <button class="btn btn-outline" id="downloadDutiesPdfBtn" type="button" style="width:auto; padding:9px 16px;" ${total === 0 ? 'disabled' : ''}>⬇ Download PDF</button>
+        </div>
       </div>
-      <button class="btn btn-outline" id="downloadDutiesPdfBtn" type="button" style="width:auto; padding:9px 16px;" ${total === 0 ? 'disabled' : ''}>⬇ Download PDF</button>
-    </div>
-    <div class="table-scroll">
-      <table>
-        <thead><tr><th class="serial-col">#</th><th>Duty Date Range</th><th>Status</th><th>Main Place</th><th>Sub Places</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>
-    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-top:14px;">
-      <span style="font-size:12.5px; color:var(--ink-500);">${total === 0 ? 'Showing 0 of 0' : `Showing ${start + 1}-${rangeEnd} of ${total}`}</span>
-      <div style="display:flex; align-items:center; gap:10px;">
-        <button class="btn btn-outline" id="dutyPrevBtn" type="button" style="width:auto; padding:8px 16px;" ${dutyPage <= 1 ? 'disabled' : ''}>Previous</button>
-        <button class="btn btn-outline" id="dutyNextBtn" type="button" style="width:auto; padding:8px 16px;" ${dutyPage >= totalPages ? 'disabled' : ''}>Next</button>
+      <div class="table-scroll duty-table">
+        <table>
+          <thead><tr><th class="serial-col">#</th><th>Duty Date Range</th><th>Status</th><th>Main Place</th><th>Sub Places</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div class="pagination-bar">
+        <span class="page-info">${total === 0 ? 'Showing 0 of 0' : `Showing ${start + 1}-${rangeEnd} of ${total}`}</span>
+        <div class="page-controls">
+          <button class="btn btn-outline" id="dutyPrevBtn" type="button" style="width:auto; padding:8px 16px;" ${dutyPage <= 1 ? 'disabled' : ''}>Previous</button>
+          <button class="btn btn-outline" id="dutyNextBtn" type="button" style="width:auto; padding:8px 16px;" ${dutyPage >= totalPages ? 'disabled' : ''}>Next</button>
+        </div>
       </div>
     </div>`;
 }
@@ -321,13 +367,12 @@ function todayISODate() {
 const renderers = {
   home: () => {
     return `
-    <div class="card">
+    <div class="card reminder-card">
       <div class="card-title">Reminder</div>
-      <p style="color:var(--ink-300); font-size:13.5px;">QR scanning is only accepted between 6:00 PM and 6:00 AM. Scans outside this window will be rejected.</p>
+      <p style="color:var(--ink-300); font-size:13.5px;">${reminderText()}</p>
     </div>
-    <div class="section-head" style="margin:26px 0 4px;"><h2>My Duties</h2><p>Duties your admin has assigned to you.</p></div>
     ${staleWarning()}
-    ${dutyPlaceholder() || dutySection()}
+    ${dutyPlaceholder() ? `<div class="section-head duty-head" style="margin:26px 0 4px;"><h2>My Duties</h2><p>Duties your admin has assigned to you.</p></div>${dutyPlaceholder()}` : dutySection()}
   `;
   },
 
@@ -679,7 +724,7 @@ pdfBtn.addEventListener('click', () => {
       const body = rows.map(r => {
         const zebra = r.groupIndex % 2 === 0 ? ' style="background:rgba(255,255,255,0.025);"' : '';
         const merged = r.first
-          ? `<td class="serial-col" rowspan="${r.span}" style="vertical-align:top;">${r.groupIndex}</td>
+          ? `<td class="serial-col grp-first" rowspan="${r.span}" style="vertical-align:top;">${r.groupIndex}</td>
              <td class="preserve-space" rowspan="${r.span}" style="vertical-align:top;">${esc(r.group.mainPlace)}</td>
              <td rowspan="${r.span}" style="vertical-align:top; white-space:nowrap;">${esc(prettyRange(r.group.dateRange))}</td>`
           : '';

@@ -46,7 +46,9 @@ a { color: inherit; text-decoration: none; }
 /* ---------- Login page ---------- */
 .login-shell {
   position: relative;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
   display: block;
   background: var(--navy-950);
   overflow: hidden;
@@ -74,6 +76,16 @@ a { color: inherit; text-decoration: none; }
 }
 
 .login-shell > * { position: relative; z-index: 1; }
+
+/* Lightning animation sits above the photo/gradient but below the login card */
+.login-shell > .lightning-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
 
 @media (max-width: 860px) {
   .login-hero { display: none; }
@@ -150,8 +162,20 @@ a { color: inherit; text-decoration: none; }
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
-  padding: 40px;
+  height: 100%;
+  padding: 20px;
+}
+
+/* Login page never scrolls */
+html:has(.login-shell), body:has(.login-shell) {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* On short screens, tighten the card so it fits without scrolling */
+@media (max-height: 700px) {
+  .login-card { padding: 20px 24px; }
+  .login-icon { transform: scale(0.85); margin-bottom: 4px; }
 }
 
 .login-card {
@@ -1028,8 +1052,10 @@ tr:last-child td { border-bottom: none; }
 .scan-chip.geo-chip:hover { border-color: #5fdcff; background: #16305c; }
 .recent-scans-table thead th { border-top: none; }
 .recent-scans-table tr:first-child td { border-top: none; }
-.recent-scans-table tr td:first-child,
+.recent-scans-table tr td.grp-first,
 .recent-scans-table tr th:first-child { border-left: none; }
+/* keep the closing line under the last row (the global rule removes it) */
+.recent-scans-table tbody tr:last-child td { border-bottom: 1px solid var(--navy-line); }
 .recent-scans-table tr td:last-child,
 .recent-scans-table tr th:last-child { border-right: none; }
 
@@ -1633,3 +1659,35 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
 .logout-confirm p { color: var(--ink-300); font-size: 14px; line-height: 1.5; margin: 0 0 20px; }
 .logout-confirm-actions { display: flex; gap: 10px; justify-content: center; }
 .logout-confirm-actions .btn { flex: 1 1 0; width: auto; }
+
+/* Inline field validation (Add Security form) */
+.field-error { margin-top: 4px; min-height: 0; font-size: 12px; }
+.field-error:empty { display: none; }
+.input-invalid { border-color: var(--danger) !important; }
+
+/* ---------- Guard Home: Reminder + My Duties fit the screen ----------
+   Compact spacing so a full page of duties fits without the page itself
+   scrolling; the table (header pinned) takes all remaining height and the
+   pagination bar stays visible underneath. */
+.reminder-card { padding: 12px 18px; margin-bottom: 0; }
+.reminder-card .card-title { margin-bottom: 6px; }
+.reminder-card p { margin: 0; line-height: 1.45; }
+.duty-head { margin: 14px 0 2px !important; }
+.duty-head h2 { font-size: 20px; }
+.duty-head p { margin-top: 2px; }
+.duty-table td { padding: 7px 12px; font-size: 13px; }
+.duty-table th { padding: 8px 12px; }
+.duty-table .chip { padding: 2px 8px; margin: 2px 4px 2px 0; font-size: 11px; }
+.duty-table .badge { padding: 2px 9px; font-size: 11px; }
+
+/* My Duties lives inside one card: toolbar, table, then the footer bar */
+.duty-card { padding: 16px 20px; margin-top: 12px; }
+
+/* My Duties heading sits inside the card, on the same row as the controls */
+.duty-card-head {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 12px; margin-bottom: 12px;
+}
+.duty-card-title h2 { font-size: 20px; color: var(--ink-100); margin: 0; }
+.duty-card-title p { color: var(--ink-500); font-size: 13px; margin: 2px 0 0; }
+.duty-card-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-left: auto; }
