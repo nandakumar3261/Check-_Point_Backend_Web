@@ -34,13 +34,37 @@ function paintIdentity() {
 
 paintIdentity();
 
+// ---- Routing: every section has its own URL (/user/<section>) ----
+const router = createRouter({
+  base: '/user',
+  routes: {
+  home: 'home',
+  images: 'images',
+  logs: 'logs',
+  account: 'personal-data',
+  contact: 'contact',
+  },
+});
+
+function setActiveNav(section) {
+  document.querySelectorAll('.nav-link[data-section]').forEach(n =>
+    n.classList.toggle('active', n.dataset.section === section));
+}
+
 document.querySelectorAll('.nav-link[data-section]').forEach(el => {
   el.addEventListener('click', () => {
-    document.querySelectorAll('.nav-link[data-section]').forEach(n => n.classList.remove('active'));
-    el.classList.add('active');
-    render(el.dataset.section);
+    const section = el.dataset.section;
+    router.push(section);
+    setActiveNav(section);
+    render(section);
     document.getElementById('sidebar').classList.remove('open');
   });
+});
+
+// Browser Back / Forward
+router.onChange(section => {
+  setActiveNav(section);
+  render(section);
 });
 
 document.getElementById('logoutBtn').addEventListener('click', () => confirmLogout(logout));
@@ -1117,5 +1141,8 @@ pdfBtn.addEventListener('click', () => {
     '<p style="color:var(--ink-500); font-size:13px;">Checking your session…</p>';
   const stillValid = await verifySessionStillValid();
   if (!stillValid) return;
-  render('home');
+  const first = router.current();   // open whichever section the URL names
+  router.replace(first);            // normalise e.g. /admin -> /admin/home
+  setActiveNav(first);
+  render(first);
 })();

@@ -93,7 +93,7 @@ function _storedPassword() {
 function logout() {
   sessionStorage.removeItem('asg_user');
   sessionStorage.removeItem('asg_cred');
-  window.location.href = 'index.html';
+  window.location.href = '/';
 }
 
 /**
@@ -119,7 +119,7 @@ async function verifySessionStillValid() {
     // server, so don't trust it - one fresh login fixes it for good.
     sessionStorage.removeItem('asg_user');
     alert('Please log in again to continue.');
-    window.location.href = 'index.html';
+    window.location.href = '/';
     return false;
   }
 
@@ -128,7 +128,7 @@ async function verifySessionStillValid() {
     sessionStorage.removeItem('asg_user');
     sessionStorage.removeItem('asg_cred');
     alert(result.message || 'Your session is no longer valid. Please log in again.');
-    window.location.href = 'index.html';
+    window.location.href = '/';
     return false;
   }
   if (result.ok === true) {
@@ -140,7 +140,7 @@ async function verifySessionStillValid() {
 function requireRole(role) {
   const u = currentUser();
   if (!u || u.role !== role) {
-    window.location.href = 'index.html';
+    window.location.href = '/';
   }
   return u;
 }

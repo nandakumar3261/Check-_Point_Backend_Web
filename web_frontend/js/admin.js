@@ -74,13 +74,39 @@ document.getElementById('sidebarUserName').textContent = user ? user.first_name 
 document.getElementById('sidebarEmpId').textContent = user ? 'Emp ID: ' + user.roll_no : '';
 fillAvatar(document.getElementById('sidebarAvatar'));
 
+// ---- Routing: every section has its own URL (/admin/<section>) ----
+const router = createRouter({
+  base: '/admin',
+  routes: {
+  home: 'home',
+  images: 'images',
+  securityData: 'security-data',
+  addDutyPlaces: 'duty-places',
+  dutyStatus: 'assign-duty',
+  account: 'personal-data',
+  contact: 'contact',
+  },
+});
+
+function setActiveNav(section) {
+  document.querySelectorAll('.nav-link[data-section]').forEach(n =>
+    n.classList.toggle('active', n.dataset.section === section));
+}
+
 document.querySelectorAll('.nav-link[data-section]').forEach(el => {
   el.addEventListener('click', () => {
-    document.querySelectorAll('.nav-link[data-section]').forEach(n => n.classList.remove('active'));
-    el.classList.add('active');
-    render(el.dataset.section);
+    const section = el.dataset.section;
+    router.push(section);
+    setActiveNav(section);
+    render(section);
     document.getElementById('sidebar').classList.remove('open');
   });
+});
+
+// Browser Back / Forward
+router.onChange(section => {
+  setActiveNav(section);
+  render(section);
 });
 
 document.getElementById('logoutBtn').addEventListener('click', () => confirmLogout(logout));
@@ -2533,7 +2559,7 @@ function attachHandlers(section) {
       previewWrap.innerHTML = '<p style="color:var(--ink-500); font-size:13px;">Generating...</p>';
 
       try {
-        const logoImg = await loadImageAsync('images/logo.png');
+        const logoImg = await loadImageAsync('/images/logo.png');
         // Requirement: the QR only needs the sub place - the raw name exactly
         // as stored (spaces included), with no main place mixed in.
         const canvas = generateQrCanvas(subPlace.name, logoImg);
@@ -3368,5 +3394,8 @@ function attachHandlers(section) {
     '<p style="color:var(--ink-500); font-size:13px;">Checking your session…</p>';
   const stillValid = await verifySessionStillValid();
   if (!stillValid) return;
-  render('home');
+  const first = router.current();   // open whichever section the URL names
+  router.replace(first);            // normalise e.g. /admin -> /admin/home
+  setActiveNav(first);
+  render(first);
 })();

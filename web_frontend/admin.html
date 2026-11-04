@@ -1,10 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+  // Show clean URLs: /admin instead of /admin.html, / instead of /index.html
+  (function () {
+    var p = location.pathname;
+    if (/\.html$/.test(p)) {
+      history.replaceState(null, '', p.replace(/\/index\.html$/, '/').replace(/\.html$/, '') + location.search + location.hash);
+    }
+  })();
+</script>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Admin — Aditya Security Guard</title>
-<link rel="stylesheet" href="css/style.css?v=lg-20261129" />
+<link rel="stylesheet" href="css/style.css?v=lg-20261131" />
 <script src="js/theme.js?v=fit-20261114"></script>
 </head>
 <body class="has-topbar">
@@ -70,6 +79,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.0.3/qrcode.min.js"></script>
+<script src="js/router.js?v=hash1"></script>
 <script src="js/data.js"></script>
 <script src="js/logout-confirm.js?v=lg-20261123"></script>
 <script src="js/search-clear.js?v=sc-20261116"></script>
@@ -78,6 +88,6 @@
 <script src="js/csv.js"></script>
 <script src="js/export.js"></script>
 <script src="js/qrcode-tool.js"></script>
-<script src="js/admin.js?v=lg-20261129"></script>
+<script src="js/admin.js?v=lg-20261131"></script>
 </body>
 </html>
