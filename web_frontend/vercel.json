@@ -1,7 +1,0 @@
-{
-  "cleanUrls": true,
-  "rewrites": [
-    { "source": "/admin/:path*", "destination": "/admin/index.html" },
-    { "source": "/user/:path*", "destination": "/user/index.html" }
-  ]
-}

@@ -1,19 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script>
-  // Show clean URLs: / instead of /index.html
-  (function () {
-    var p = location.pathname;
-    if (/\.html$/.test(p)) {
-      history.replaceState(null, '', p.replace(/index\.html$/, '') + location.search + location.hash);
-    }
-  })();
-</script>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Aditya Security Guard — Sign In</title>
-<link rel="stylesheet" href="/css/style.css?v=login-card-13" />
+<link rel="stylesheet" href="css/style.css?v=login-card-9" />
 </head>
 <body>
 
@@ -22,7 +13,7 @@
   <div class="login-panel">
     <div class="login-card">
       <div class="login-icon">
-        <img src="/images/check_point_logo.png" alt="Check Point" />
+        <img src="images/check_point_logo.png" alt="Check Point" />
       </div>
       <div class="login-brand">Aditya Security Guard</div>
       <h2>Sign in</h2>
@@ -136,9 +127,9 @@
   </div>
 </div>
 
-<script src="/js/lightning.js"></script>
-<script src="/js/data.js"></script>
-<script src="/js/api.js"></script>
+<script src="js/lightning.js"></script>
+<script src="js/data.js"></script>
+<script src="js/api.js"></script>
 <script>
   document.getElementById('loginForm').addEventListener('submit', async function (e) {
     e.preventDefault();
@@ -159,7 +150,7 @@
     try {
       const user = await loginViaApi(rollNo, password);
       setCurrentUser(user, password); // password kept (obfuscated, this tab only) so the session can be re-verified later
-      window.location.href = user.role === 'admin' ? '/admin/home' : '/user/home';
+      window.location.href = user.role === 'admin' ? 'admin.html' : 'user.html';
     } catch (err) {
       errorText.textContent = err.message || 'Invalid employee ID or password.';
     } finally {
