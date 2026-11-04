@@ -4,6 +4,16 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Guard — Aditya Security Guard</title>
+<script>
+  /* Show clean URLs: /user.html -> /user, /admin.html -> /admin, /index.html -> / */
+  (function () {
+    var p = location.pathname;
+    if (/^https?:$/.test(location.protocol) && /\.html$/.test(p)) {
+      var clean = p.replace(/\/index\.html$/, '/').replace(/\.html$/, '');
+      history.replaceState(null, '', clean + location.search + location.hash);
+    }
+  })();
+</script>
 <link rel="stylesheet" href="css/style.css?v=lg-20261129" />
 <script src="js/theme.js?v=fit-20261114"></script>
 </head>
