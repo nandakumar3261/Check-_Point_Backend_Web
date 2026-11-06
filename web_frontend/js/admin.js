@@ -158,6 +158,13 @@ function render(section) {
   if (_firstRenderDone) verifySessionStillValid();
   _firstRenderDone = true;
 
+  // Page title in the top bar follows the selected sidebar item (display only).
+  const _pt = document.getElementById('pageTitle');
+  if (_pt) {
+    const _lbl = document.querySelector('.nav-link[data-section="' + section + '"] .nav-label');
+    _pt.textContent = _lbl ? _lbl.textContent : 'Home';
+  }
+
   document.getElementById('content').innerHTML = renderers[section]();
   attachHandlers(section);
 }
