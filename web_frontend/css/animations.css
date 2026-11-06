@@ -223,3 +223,12 @@ html.theme-fade, html.theme-fade *, html.theme-fade *::before, html.theme-fade *
     scroll-behavior: auto !important;
   }
 }
+
+/* ---------- Loader (replaces "Loading..." text where data is fetched) ---------- */
+.spinner {
+  display: inline-block; width: 16px; height: 16px; margin-right: 10px;
+  vertical-align: -3px; border-radius: 50%;
+  border: 2px solid var(--amber-soft); border-top-color: var(--amber);
+  animation: anim-spin 0.7s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 1.5s !important; animation-iteration-count: infinite !important; } }

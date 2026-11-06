@@ -266,7 +266,7 @@ const renderers = {
           </colgroup>
           <thead><tr><th class="serial-col">#</th><th>Guard</th><th>Main Place</th><th class="serial-col">Sub #</th><th>Sub Place</th><th class="status-col">Status</th><th>Scanned At (Timeline)</th><th>Geo-Coordinates</th></tr></thead>
           <tbody id="recentScansBody">
-            <tr><td colspan="8" style="color:var(--ink-500); font-size:13px;">Loading from MongoDB...</td></tr>
+            <tr><td colspan="8" style="color:var(--ink-500); font-size:13px;"><span class="spinner" role="status" aria-label="Loading"></span><span class="loader-text">Loading...</span></td></tr>
           </tbody>
         </table>
       </div>
@@ -312,13 +312,13 @@ const renderers = {
 
     <div class="tab-panel" id="tab-getUploadImages" style="display:none;">
       <div id="uploadedImagesView">
-        <p style="color:var(--ink-500); font-size:13px;">Loading from MongoDB...</p>
+        <p style="color:var(--ink-500); font-size:13px;"><span class="spinner" role="status" aria-label="Loading"></span><span class="loader-text">Loading...</span></p>
       </div>
     </div>
   `,
 
   securityData: () => `
-    ${sectionHead('Security Data', 'Register new accounts and review everyone already registered, all backed by MongoDB.')}
+    ${sectionHead('Security Data', 'Register new accounts and review everyone already registered.')}
 
     <div class="tabs" id="securityDataTabs">
       <button class="tab-btn active" data-tab="addSecurity" type="button">Add Security</button>
@@ -411,7 +411,7 @@ const renderers = {
             <button class="btn btn-outline" id="downloadSecurityPdfBtn" type="button">⬇ Download PDF</button>
           </div>
         </div>
-        <div id="securityDataTableWrap"><p style="color:var(--ink-500); font-size:13px;">Loading from MongoDB...</p></div>
+        <div id="securityDataTableWrap"><p style="color:var(--ink-500); font-size:13px;"><span class="spinner" role="status" aria-label="Loading"></span><span class="loader-text">Loading...</span></p></div>
         <div class="pagination-bar">
           <div class="page-info" id="securityPageInfo"></div>
           <div class="page-controls">
@@ -487,7 +487,7 @@ const renderers = {
             <button class="btn btn-outline" id="downloadDutyPlacesBtn" type="button">⬇ Download Excel</button>
           </div>
         </div>
-        <div id="dutyPlacesTableWrap"><p style="color:var(--ink-500); font-size:13px;">Loading from MongoDB...</p></div>
+        <div id="dutyPlacesTableWrap"><p style="color:var(--ink-500); font-size:13px;"><span class="spinner" role="status" aria-label="Loading"></span><span class="loader-text">Loading...</span></p></div>
         <div class="pagination-bar">
           <div class="page-info" id="dutyPlacesPageInfo"></div>
           <div class="page-controls">
@@ -580,7 +580,7 @@ const renderers = {
             <button class="btn btn-outline" id="downloadAssignedPdfBtn" type="button">⬇ Download PDF</button>
           </div>
         </div>
-        <div id="assignedTableWrap"><p style="color:var(--ink-500); font-size:13px;">Loading from MongoDB...</p></div>
+        <div id="assignedTableWrap"><p style="color:var(--ink-500); font-size:13px;"><span class="spinner" role="status" aria-label="Loading"></span><span class="loader-text">Loading...</span></p></div>
         <div class="pagination-bar">
           <div class="page-info" id="assignedPageInfo"></div>
           <div class="page-controls">
@@ -936,7 +936,7 @@ function attachHandlers(section) {
     function loadRecentScans(date) {
       updateRecentScansHeading(date);
       document.getElementById('recentScansBody').innerHTML =
-        '<tr><td colspan="8" style="color:var(--ink-500); font-size:13px;">Loading from MongoDB...</td></tr>';
+        '<tr><td colspan="8" style="color:var(--ink-500); font-size:13px;"><span class="spinner" role="status" aria-label="Loading"></span><span class="loader-text">Loading...</span></td></tr>';
       updateRecentScansPager(0, 1);
 
       fetchQrScanCoverageViaApi({ date })
@@ -946,7 +946,7 @@ function attachHandlers(section) {
         })
         .catch(err => {
           document.getElementById('recentScansBody').innerHTML =
-            `<tr><td colspan="8" style="color:var(--danger); font-size:13px;">Could not load from MongoDB: ${escapeHtml(err.message)}</td></tr>`;
+            `<tr><td colspan="8" style="color:var(--danger); font-size:13px;">Could not load data: ${escapeHtml(err.message)}</td></tr>`;
           updateRecentScansPager(0, 1);
         });
     }
@@ -1475,7 +1475,7 @@ function attachHandlers(section) {
 
     async function loadUploadedImages() {
       const view = document.getElementById('uploadedImagesView');
-      view.innerHTML = '<p style="color:var(--ink-500); font-size:13px;">Loading from MongoDB...</p>';
+      view.innerHTML = '<p style="color:var(--ink-500); font-size:13px;"><span class="spinner" role="status" aria-label="Loading"></span><span class="loader-text">Loading...</span></p>';
       try {
         const data = await fetchAllUploadedImages();
         const stamp = img => new Date(img.uploadedAt || img.createdAt).getTime() || 0;
@@ -1774,7 +1774,7 @@ function attachHandlers(section) {
       currentRows = res.data;
       const wrap = document.getElementById('securityDataTableWrap');
       if (!res.data.length) {
-        wrap.innerHTML = `<p style="color:var(--ink-500); font-size:13px;">${state.search ? 'No matching accounts found.' : 'No accounts in MongoDB yet. Create the first admin in mongosh (see README.md) or add one via "Add Security".'}</p>`;
+        wrap.innerHTML = `<p style="color:var(--ink-500); font-size:13px;">${state.search ? 'No matching accounts found.' : 'No accounts yet. Add one via "Add Security".'}</p>`;
       } else {
         const startSerial = (res.page - 1) * res.limit;
         wrap.innerHTML = `
@@ -1818,11 +1818,11 @@ function attachHandlers(section) {
     };
 
     const load = () => {
-      document.getElementById('securityDataTableWrap').innerHTML = '<p style="color:var(--ink-500); font-size:13px;">Loading from MongoDB...</p>';
+      document.getElementById('securityDataTableWrap').innerHTML = '<p style="color:var(--ink-500); font-size:13px;"><span class="spinner" role="status" aria-label="Loading"></span><span class="loader-text">Loading...</span></p>';
       fetchUsersViaApi({ search: state.search, page: state.page, limit: state.limit })
         .then(renderTable)
         .catch(err => {
-          document.getElementById('securityDataTableWrap').innerHTML = `<p style="color:var(--danger); font-size:13px;">Could not load from MongoDB: ${escapeHtml(err.message)}</p>`;
+          document.getElementById('securityDataTableWrap').innerHTML = `<p style="color:var(--danger); font-size:13px;">Could not load data: ${escapeHtml(err.message)}</p>`;
         });
     };
 
@@ -2283,11 +2283,11 @@ function attachHandlers(section) {
     }
 
     function loadExistingPlaces() {
-      document.getElementById('dutyPlacesTableWrap').innerHTML = '<p style="color:var(--ink-500); font-size:13px;">Loading from MongoDB...</p>';
+      document.getElementById('dutyPlacesTableWrap').innerHTML = '<p style="color:var(--ink-500); font-size:13px;"><span class="spinner" role="status" aria-label="Loading"></span><span class="loader-text">Loading...</span></p>';
       fetchDutyPlacesViaApi({ search: state.search, page: state.page, limit: state.limit })
         .then(renderPlacesTable)
         .catch(err => {
-          document.getElementById('dutyPlacesTableWrap').innerHTML = `<p style="color:var(--danger); font-size:13px;">Could not load from MongoDB: ${escapeHtml(err.message)}</p>`;
+          document.getElementById('dutyPlacesTableWrap').innerHTML = `<p style="color:var(--danger); font-size:13px;">Could not load data: ${escapeHtml(err.message)}</p>`;
         });
     }
 
@@ -3098,11 +3098,11 @@ function attachHandlers(section) {
     }
 
     function loadAssignedDuties() {
-      document.getElementById('assignedTableWrap').innerHTML = '<p style="color:var(--ink-500); font-size:13px;">Loading from MongoDB...</p>';
+      document.getElementById('assignedTableWrap').innerHTML = '<p style="color:var(--ink-500); font-size:13px;"><span class="spinner" role="status" aria-label="Loading"></span><span class="loader-text">Loading...</span></p>';
       fetchDutyAssignmentsViaApi({ search: assignedState.search, date: assignedState.date, page: assignedState.page, limit: assignedState.limit })
         .then(renderAssignedTable)
         .catch(err => {
-          document.getElementById('assignedTableWrap').innerHTML = `<p style="color:var(--danger); font-size:13px;">Could not load from MongoDB: ${escapeHtml(err.message)}</p>`;
+          document.getElementById('assignedTableWrap').innerHTML = `<p style="color:var(--danger); font-size:13px;">Could not load data: ${escapeHtml(err.message)}</p>`;
         });
     }
 
