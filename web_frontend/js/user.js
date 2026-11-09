@@ -464,18 +464,7 @@ const renderers = {
 
   changePassword: () => changePasswordSectionHtml(sectionHead),
 
-  contact: () => `
-    <div class="card contact-card">
-      <h3 class="contact-title">Contact Us</h3>
-      <p class="contact-dept">Department of Technical Training</p>
-      <div class="contact-divider"></div>
-      <p class="contact-name">Nanda Kumar</p>
-      <p class="contact-role">Assistant Mentor | App Developer</p>
-      <p class="contact-line"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg><a href="mailto:nandakumark@adityauniversity.in">nandakumark@adityauniversity.in</a></p>
-      <p class="contact-line"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6A19.8 19.8 0 012.1 4.2 2 2 0 014.1 2h3a2 2 0 012 1.7c.1 1 .4 1.9.7 2.8a2 2 0 01-.5 2.1L8 9.9a16 16 0 006 6l1.3-1.3a2 2 0 012.1-.4c.9.3 1.8.6 2.8.7a2 2 0 011.7 2z"/></svg><a href="tel:+919000443261">+91 9000443261</a></p>
-      <p class="contact-line"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M6 21V5a1 1 0 011-1h7a1 1 0 011 1v16M15 9h3a1 1 0 011 1v11M9 8h2M9 12h2M9 16h2"/></svg><span>Department of Technical Training</span></p>
-    </div>
-  `,
+  contact: () => contactSectionHtml(),
 };
 
 // ---------- Account: Profile / Change Password / Contact Us as three top tabs ----------
@@ -504,6 +493,11 @@ function attachAccountHandlers() {
 }
 
 function attachHandlers(section) {
+  if (section === 'contact') {
+    loadContactUs();
+    return;
+  }
+
   if (section === 'account') {
     attachHandlers('profile');
     attachHandlers('changePassword');

@@ -437,3 +437,19 @@ async function changePasswordViaApi(roll_no, current_password, new_password, con
   });
   return readJsonResponse(res);
 }
+
+/**
+ * Contact Us directory (GET /api/contact-us) - readable by admin and
+ * security logins alike. Rendered by js/contact.js.
+ *   -> { data: [{ _id, name, designation, role, dept, mail, mobile }], total, page, limit, totalPages }
+ */
+async function fetchContactsViaApi({ search, dept, page = 1, limit = 500 } = {}) {
+  const params = new URLSearchParams();
+  if (search) params.set('search', search);
+  if (dept) params.set('dept', dept);
+  params.set('page', page);
+  params.set('limit', limit);
+
+  const res = await apiFetch(`/api/contact-us?${params.toString()}`);
+  return readJsonResponse(res);
+}

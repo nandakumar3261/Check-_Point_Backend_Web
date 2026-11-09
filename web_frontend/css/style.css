@@ -1631,6 +1631,7 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
 }
 
 /* ---------- Contact Us card ---------- */
+.contact-list { display: flex; flex-direction: column; gap: 16px; }
 .contact-card { max-width: 520px; padding: 22px 24px; }
 .contact-title { color: var(--amber); font-size: 19px; font-weight: 700; margin: 0 0 8px; }
 .contact-dept { color: var(--ink-300); font-size: 13px; margin: 0; }

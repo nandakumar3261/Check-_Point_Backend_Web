@@ -28,6 +28,7 @@ Health check: `GET /api/health`
 | `/api/duty-assignments` | `routes/dutyAssignments.js`|
 | `/api/qr-scans`         | `routes/qrScans.js`        |
 | `/api/uploaded-images`  | `routes/uploadedImages.js` |
+| `/api/contact-us`       | `routes/contactUs.js`      |
 
 ## Uploaded files
 
