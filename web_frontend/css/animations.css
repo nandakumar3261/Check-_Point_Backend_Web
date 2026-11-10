@@ -47,7 +47,8 @@
   box-shadow: 0 0 0 3px rgba(232, 163, 61, 0.18);
 }
 .input-icon .field-icon { transition: color 0.2s ease, transform 0.25s var(--ease-spring); }
-.input-icon:focus-within .field-icon { transform: scale(1.12); }
+/* Keep the vertical centring (translateY) while scaling, otherwise the icon drops when the field is focused */
+.input-icon:focus-within .field-icon { transform: translateY(-50%) scale(1.12); }
 .pw-toggle svg { transition: transform 0.2s ease; }
 .pw-toggle:active svg { transform: scale(0.8); }
 
