@@ -41,7 +41,7 @@ function exportRowsToExcel(rows, { filename, sheetName = 'Sheet1' } = {}) {
  * @param {string} opts.filename   Download filename, e.g. "duties.pdf".
  * @param {string} [opts.title]    Optional heading printed above the table.
  */
-function exportRowsToPdf(columns, rows, { filename, title } = {}) {
+async function exportRowsToPdf(columns, rows, { filename, title, details } = {}) {
   if (typeof jspdf === 'undefined' || !jspdf.jsPDF) {
     alert('The PDF export library did not load. Check your internet connection and try again.');
     return;
@@ -51,9 +51,15 @@ function exportRowsToPdf(columns, rows, { filename, title } = {}) {
     return;
   }
 
-  const doc = new jspdf.jsPDF({ orientation: 'landscape' });
+  const doc = new jspdf.jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+  // Same header as the other reports (logo, title, coloured "Check Point",
+  // details rows). Without `details` it falls back to a plain title.
   let startY = 10;
-  if (title) {
+  if (details && details.length) {
+    const logo = await loadPdfLogoDataUrl();
+    startY = drawPdfReportHeader(doc, { title: title || 'Report', logo, details });
+  } else if (title) {
     doc.setFontSize(14);
     doc.text(title, 14, 15);
     startY = 22;
@@ -61,9 +67,13 @@ function exportRowsToPdf(columns, rows, { filename, title } = {}) {
 
   doc.autoTable({
     startY,
+    margin: { left: 14, right: 14, bottom: 14 },
+    rowPageBreak: 'avoid',
+    didDrawPage: (data) => drawPdfPageNumber(doc, data.pageNumber),
+    theme: 'grid',
     head: [columns.map((c) => c.header)],
     body: rows.map((r) => columns.map((c) => (r[c.key] ?? ''))),
-    styles: { fontSize: 8 },
+    styles: { fontSize: 8, lineWidth: 0.1, lineColor: [38, 56, 90] },
     headStyles: { fillColor: [18, 33, 58] },
   });
 
@@ -102,6 +112,87 @@ function loadSquareImageAsDataUrl(url, size = 128) {
 }
 
 /**
+ * Shared PDF report header: university logo (left), report title + coloured
+ * "Check Point" (right), a rule, then two rows of label/value details.
+ * Returns the Y position where the table should start.
+ *
+ * @param {jsPDF} doc
+ * @param {Object} opts
+ * @param {string} opts.title        e.g. "Security Information Report"
+ * @param {string|null} opts.logo    data URL from loadPdfLogoDataUrl() (null = no logo)
+ * @param {Array<Array<[string,string]>>} opts.details  rows of [label, value] pairs (max 4 per row)
+ */
+async function loadPdfLogoDataUrl() {
+  try {
+    const res = await fetch('images/aus_logo.png');
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (e) {
+    return null;
+  }
+}
+
+function drawPdfReportHeader(doc, { title, logo, details }) {
+  const pageW = doc.internal.pageSize.getWidth();
+  const marginX = 14;
+
+  if (logo) {
+    const logoH = 11;
+    doc.addImage(logo, 'PNG', marginX, 8, logoH * (1766 / 229), logoH);
+  }
+
+  doc.setTextColor(18, 33, 58);
+  doc.setFont(undefined, 'bold');
+  doc.setFontSize(14);
+  doc.text(title, pageW - marginX, 13, { align: 'right' });
+
+  // "Check Point" in the logo's two colours (orange + blue), right-aligned.
+  doc.setFontSize(12);
+  const cpX = pageW - marginX - doc.getTextWidth('Check Point');
+  doc.setTextColor(244, 112, 37);
+  doc.text('Check', cpX, 19.5);
+  doc.setTextColor(3, 81, 155);
+  doc.text('Point', cpX + doc.getTextWidth('Check '), 19.5);
+  doc.setFont(undefined, 'normal');
+
+  doc.setDrawColor(18, 33, 58);
+  doc.setLineWidth(0.5);
+  doc.line(marginX, 22, pageW - marginX, 22);
+
+  const colW = (pageW - marginX * 2) / 4;
+  details.forEach((row, rIdx) => {
+    row.forEach(([label, value], cIdx) => {
+      const x = marginX + cIdx * colW;
+      const y = 29 + rIdx * 7;
+      doc.setFontSize(9);
+      doc.setFont(undefined, 'bold');
+      doc.setTextColor(90, 100, 120);
+      doc.text(`${label}:`, x, y);
+      const labelW = doc.getTextWidth(`${label}:`);
+      doc.setFont(undefined, 'normal');
+      doc.setTextColor(18, 33, 58);
+      doc.text(String(value), x + labelW + 2, y);
+    });
+  });
+  doc.setTextColor(0, 0, 0);
+  return 29 + (details.length - 1) * 7 + 9;
+}
+
+function drawPdfPageNumber(doc, pageNumber) {
+  const pageW = doc.internal.pageSize.getWidth();
+  doc.setFontSize(8);
+  doc.setTextColor(120, 130, 150);
+  doc.text(`Page ${pageNumber}`, pageW - 14, doc.internal.pageSize.getHeight() - 7, { align: 'right' });
+  doc.setTextColor(0, 0, 0);
+}
+
+/**
  * Security Information (guard/admin accounts) as a PDF table with each
  * person's profile photo. Uses jsPDF + jspdf-autotable (loaded via CDN in
  * admin.html), same as exportRowsToPdf, but the Photo column is hand-drawn
@@ -116,7 +207,7 @@ function loadSquareImageAsDataUrl(url, size = 128) {
  * @param {string} opts.filename
  * @param {string} [opts.title]
  */
-async function exportSecurityDataToPdf(users, { filename, title = 'Security Information' } = {}) {
+async function exportSecurityDataToPdf(users, { filename, title = 'Security Information Report', search = '' } = {}) {
   if (typeof jspdf === 'undefined' || !jspdf.jsPDF) {
     alert('The PDF export library did not load. Check your internet connection and try again.');
     return;
@@ -151,14 +242,25 @@ async function exportSecurityDataToPdf(users, { filename, title = 'Security Info
     formatDateTime(u.createdAt),
   ]);
 
-  const doc = new jspdf.jsPDF({ orientation: 'landscape' });
-  doc.setFontSize(14);
-  doc.text(title, 14, 15);
-  doc.setFontSize(10);
-  doc.text(`${users.length} account${users.length === 1 ? '' : 's'}`, 14, 21);
+  const doc = new jspdf.jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const logo = await loadPdfLogoDataUrl();
+  const activeCount = users.filter((u) => !u.blocked).length;
+  const generatedBy = typeof user !== 'undefined' && user ? `${user.first_name} (${user.roll_no})` : '—';
+  const startY = drawPdfReportHeader(doc, {
+    title,
+    logo,
+    details: [
+      [['Generated On', formatDateTime(new Date().toISOString())], ['Generated By', generatedBy], ['Total Accounts', String(users.length)], ['Search', search ? search : 'All']],
+      [['Active', String(activeCount)], ['Blocked', String(users.length - activeCount)], ['Security Guards', String(users.filter((u) => u.role === 'security').length)], ['Admins', String(users.filter((u) => u.role === 'admin').length)]],
+    ],
+  });
 
   doc.autoTable({
-    startY: 26,
+    margin: { left: 14, right: 14, bottom: 14 },
+    didDrawPage: (data) => drawPdfPageNumber(doc, data.pageNumber),
+    startY,
+    // Never split a row across two pages - a row that doesn't fit moves whole to the next page.
+    rowPageBreak: 'avoid',
     theme: 'grid',
     head: [['#', 'Photo', 'Name', 'Roll No', 'Role', 'Gender', 'Mobile', 'Designation', 'Status', 'Added On']],
     body,

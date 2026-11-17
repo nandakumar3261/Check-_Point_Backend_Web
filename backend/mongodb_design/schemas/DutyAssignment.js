@@ -11,6 +11,8 @@ const DutyAssignmentSchema = new Schema(
     dutyPlaceId: { type: Schema.Types.ObjectId, ref: 'DutyPlace' },
     mainPlace: { type: String, required: true },
     subPlaces: { type: [String], required: true },
+    // Day Duty = one date; Night Duty = two dates (start day + next day).
+    dutyType: { type: String, enum: ['Day Duty', 'Night Duty'] },
     assignedBy: { type: String, default: 'admin' },
   },
   { timestamps: true }

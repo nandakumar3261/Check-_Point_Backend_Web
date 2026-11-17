@@ -9,21 +9,34 @@ function escapeRegex(s) {
   return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+const DUTY_TYPES = ['Day Duty', 'Night Duty'];
+
+// Mongo filter for "this duty type". Older duties saved before duty types
+// existed have no dutyType and count as Night Duty.
+function dutyTypeFilter(type) {
+  return type === 'Night Duty' ? { $in: ['Night Duty', null] } : 'Day Duty';
+}
+
+// "YYYY-MM-DD" dates are parsed as UTC midnight, so read them back with the
+// UTC getters - that keeps the day correct whatever the server's timezone is.
 function toDDMMYYYY(d) {
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const yyyy = d.getFullYear();
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const yyyy = d.getUTCFullYear();
   return `${dd}-${mm}-${yyyy}`;
 }
 
-// Duty shifts run overnight, so the display range is "start day_next day",
-// e.g. "10-01-2024_11-01-2024" - matching the format already used elsewhere
-// in the app. Returns null if dutyDateStr isn't a valid date.
-function computeDateRange(dutyDateStr) {
+// Display range for a duty:
+//   Day Duty   -> one date,            e.g. "10-01-2024"
+//   Night Duty -> start day_next day,  e.g. "10-01-2024_11-01-2024"
+// (the night shift runs overnight, so it covers two dates).
+// Returns null if dutyDateStr isn't a valid date.
+function computeDateRange(dutyDateStr, dutyType) {
   const start = new Date(dutyDateStr);
   if (isNaN(start.getTime())) return null;
+  if (dutyType === 'Day Duty') return toDDMMYYYY(start);
   const end = new Date(start);
-  end.setDate(end.getDate() + 1);
+  end.setUTCDate(end.getUTCDate() + 1);
   return `${toDDMMYYYY(start)}_${toDDMMYYYY(end)}`;
 }
 
@@ -98,6 +111,16 @@ router.get('/', requireRole('admin'), async (req, res) => {
       }
     }
 
+    // Optional ?dutyType=Day Duty | Night Duty. Duties saved before duty types
+    // existed have no dutyType and count as Night Duty (two-date range).
+    const dutyType = typeof req.query.dutyType === 'string' ? req.query.dutyType.trim() : '';
+    if (dutyType) {
+      if (!DUTY_TYPES.includes(dutyType)) {
+        return res.status(400).json({ error: 'dutyType must be "Day Duty" or "Night Duty".' });
+      }
+      filter.dutyType = dutyType === 'Night Duty' ? { $in: ['Night Duty', null] } : 'Day Duty';
+    }
+
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 10000);
     const skip = (page - 1) * limit;
@@ -162,7 +185,11 @@ router.get('/mine', ownGuardOrAdmin, async (req, res) => {
 // only once per dateRange across the whole database.
 router.post('/bulk', requireRole('admin'), async (req, res) => {
   try {
-    const dateRange = computeDateRange(req.body.dutyDate);
+    const dutyType = req.body.dutyType;
+    if (!DUTY_TYPES.includes(dutyType)) {
+      return res.status(400).json({ error: 'Select a duty type: "Day Duty" or "Night Duty".' });
+    }
+    const dateRange = computeDateRange(req.body.dutyDate, dutyType);
     if (!dateRange) {
       return res.status(400).json({ error: 'A valid duty date is required.' });
     }
@@ -179,6 +206,7 @@ router.post('/bulk', requireRole('admin'), async (req, res) => {
     }
 
     const seenGuards = new Set();
+    const seenPlaces = new Set();
     const results = [];
     let insertedCount = 0;
 
@@ -197,8 +225,27 @@ router.post('/bulk', requireRole('admin'), async (req, res) => {
         results.push({ index: i, guardName, status: 'skipped', reason: 'This guard already has a duty in this batch.' });
         continue;
       }
+      // One duty per main place, per date, per duty type - same rule the
+      // screen applies, enforced here too so it can't be bypassed.
+      if (seenPlaces.has(mainPlace.toLowerCase())) {
+        results.push({ index: i, guardName, status: 'skipped', reason: `${mainPlace} is already used by another duty in this batch.` });
+        continue;
+      }
 
       try {
+        // Day and Night duties are separate: a guard can have one Day duty and
+        // one Night duty on the same date, but not two of the same type
+        // (dateRange differs per type, e.g. "17-11-2026" vs "17-11-2026_18-11-2026").
+        const placeTaken = await DutyAssignment.findOne({
+          mainPlace: new RegExp(`^${escapeRegex(mainPlace)}$`, 'i'),
+          dutyDate: { $gte: chosenBounds.start, $lt: chosenBounds.end },
+          dutyType: dutyTypeFilter(dutyType),
+        });
+        if (placeTaken) {
+          results.push({ index: i, guardName, status: 'skipped', reason: `${mainPlace} already has a ${dutyType} for ${dateRange}.` });
+          continue;
+        }
+
         const existing = await DutyAssignment.findOne({ guardEmpId, dateRange });
         if (existing) {
           results.push({ index: i, guardName, status: 'skipped', reason: `${guardName} already has a duty assigned for ${dateRange}.` });
@@ -211,10 +258,12 @@ router.post('/bulk', requireRole('admin'), async (req, res) => {
           dutyPlaceId: row.dutyPlaceId || undefined,
           mainPlace,
           subPlaces,
+          dutyType,
           dutyDate: new Date(req.body.dutyDate),
           dateRange,
         });
         seenGuards.add(guardEmpId);
+        seenPlaces.add(mainPlace.toLowerCase());
         insertedCount += 1;
         results.push({ index: i, guardName, status: 'inserted' });
       } catch (rowErr) {
@@ -246,14 +295,14 @@ function isCompleted(dutyDate) {
 // PUT /api/duty-assignments/:id  { guardEmpId, guardName, dutyPlaceId, mainPlace, subPlaces, dutyDate }
 router.put('/:id', requireRole('admin'), async (req, res) => {
   try {
-    const guardEmpId = String(req.body.guardEmpId || '').trim();
-    const guardName = String(req.body.guardName || '').trim();
+    // Only the main place (and its sub places) can be changed. The guard, duty
+    // type and duty date stay as they were whatever the request body says -
+    // to change those, delete the duty and assign it again.
     const mainPlace = String(req.body.mainPlace || '').trim();
     const subPlaces = Array.isArray(req.body.subPlaces) ? req.body.subPlaces.map((s) => String(s).trim()).filter(Boolean) : [];
-    const dateRange = computeDateRange(req.body.dutyDate);
 
-    if (!guardEmpId || !guardName || !mainPlace || subPlaces.length === 0 || !dateRange) {
-      return res.status(400).json({ error: 'Guard, main place, sub places, and a valid duty date are all required.' });
+    if (!mainPlace || subPlaces.length === 0) {
+      return res.status(400).json({ error: 'Main place and its sub places are required.' });
     }
 
     const doc = await DutyAssignment.findById(req.params.id);
@@ -264,32 +313,28 @@ router.put('/:id', requireRole('admin'), async (req, res) => {
       return res.status(409).json({ error: 'This duty has already been completed and can no longer be edited.' });
     }
 
-    const chosenBounds = dayBoundsUTC(req.body.dutyDate);
-    const todayBounds = dayBoundsUTC(new Date().toISOString().slice(0, 10));
-    if (chosenBounds && todayBounds && chosenBounds.start < todayBounds.start) {
-      return res.status(400).json({ error: 'Duty date cannot be moved into the past. Choose today or a later date.' });
+    // Same rule as assigning: one duty per main place, per date, per duty type.
+    // (Old duties without a dutyType count as Night Duty.)
+    const type = doc.dutyType || 'Night Duty';
+    const bounds = dayBoundsUTC(doc.dutyDate.toISOString().slice(0, 10));
+    const clash = await DutyAssignment.findOne({
+      _id: { $ne: doc._id },
+      mainPlace: new RegExp(`^${escapeRegex(mainPlace)}$`, 'i'),
+      dutyDate: { $gte: bounds.start, $lt: bounds.end },
+      dutyType: dutyTypeFilter(type),
+    });
+    if (clash) {
+      return res.status(409).json({ error: `${mainPlace} already has a ${type} for ${doc.dateRange}.` });
     }
 
-    const dupe = await DutyAssignment.findOne({ _id: { $ne: doc._id }, guardEmpId, dateRange });
-    if (dupe) {
-      return res.status(409).json({ error: `${guardName} already has a duty assigned for ${dateRange}.` });
-    }
-
-    doc.guardEmpId = guardEmpId;
-    doc.guardName = guardName;
     if (req.body.dutyPlaceId) doc.dutyPlaceId = req.body.dutyPlaceId;
     doc.mainPlace = mainPlace;
     doc.subPlaces = subPlaces;
-    doc.dutyDate = new Date(req.body.dutyDate);
-    doc.dateRange = dateRange;
 
     await doc.save();
     res.json(doc);
   } catch (err) {
     console.error(err);
-    if (err.code === 11000) {
-      return res.status(409).json({ error: 'Duplicate duty for this guard and date.' });
-    }
     res.status(500).json({ error: 'Server error updating duty assignment.' });
   }
 });

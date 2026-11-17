@@ -151,6 +151,11 @@ document.getElementById('logoutBtn').addEventListener('click', () => confirmLogo
 
 let _firstRenderDone = false;
 
+// Home's Day Duty / Night Duty switch (top bar, left of the Light button).
+// Defaults to Day Duty; the choice is kept while moving between sections.
+let homeDutyType = 'Day Duty';
+let currentSection = 'home';
+
 function render(section) {
   // Every later page/section switch re-checks the session in the background
   // (not awaited, so navigation stays instant); the very first render is
@@ -165,9 +170,27 @@ function render(section) {
     _pt.textContent = _lbl ? _lbl.textContent : 'Home';
   }
 
+  currentSection = section;
+  // The switch only belongs on the Home page.
+  const _sw = document.getElementById('dutyTypeSwitch');
+  if (_sw) _sw.style.display = section === 'home' ? '' : 'none';
+
   document.getElementById('content').innerHTML = renderers[section]();
   attachHandlers(section);
 }
+
+document.querySelectorAll('#dutyTypeSwitch .duty-switch-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (btn.dataset.dutyType === homeDutyType) return;
+    homeDutyType = btn.dataset.dutyType;
+    document.querySelectorAll('#dutyTypeSwitch .duty-switch-btn').forEach(b => {
+      const on = b.dataset.dutyType === homeDutyType;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    if (currentSection === 'home') render('home');
+  });
+});
 
 function sectionHead(title, sub) {
   return `<div class="section-head"><h2>${title}</h2><p>${sub}</p></div>`;
@@ -219,15 +242,15 @@ const renderers = {
         <div class="dash-num" id="qrScansTodayStat">…</div>
         <div class="dash-text">
           <span class="dash-label">QR Scans Today</span>
-          <div class="dash-sub" id="qrScansTodayNote">Shift awaiting initial scan</div>
+          <div class="dash-sub" id="qrScansTodayNote">No scans yet</div>
         </div>
         <span class="dash-icon tone-amber"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V5a1 1 0 011-1h3M16 4h3a1 1 0 011 1v3M20 16v3a1 1 0 01-1 1h-3M8 20H5a1 1 0 01-1-1v-3"/><path d="M8 12h8"/></svg></span>
       </div>
       <div class="dash-card">
         <div class="dash-num" id="todayDutiesStat">…</div>
         <div class="dash-text">
-          <span class="dash-label">Today's Assigned Duties</span>
-          <div class="dash-sub" id="todayDutiesNote">Guards on duty today</div>
+          <span class="dash-label">Today's Duties</span>
+          <div class="dash-sub" id="todayDutiesNote">On duty today</div>
         </div>
         <span class="dash-icon tone-green"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9zM9 14l2 2 4-4"/></svg></span>
       </div>
@@ -537,11 +560,24 @@ const renderers = {
     </div>
 
     <div class="tab-panel" id="tab-assignDuty">
-      <div class="card" style="max-width:280px;">
-        <div class="field" style="margin-bottom:0;"><label>Duty date</label><input type="date" id="assignDutyDate" /></div>
+      <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:flex-start;">
+        <div class="card" style="width:280px; max-width:100%;">
+          <div class="field" style="margin-bottom:0;"><label>Duty date</label><input type="date" id="assignDutyDate" /></div>
+        </div>
+        <div class="card" style="width:280px; max-width:100%;">
+          <div class="field" style="margin-bottom:0;">
+            <label>Duty type</label>
+            <select id="assignDutyType">
+              <option value="" selected disabled>Select duty type</option>
+              <option value="Day Duty">Day Duty</option>
+              <option value="Night Duty">Night Duty</option>
+            </select>
+          </div>
+        </div>
+        <div id="assignDutyRangeNote" style="align-self:center; font-size:13px; color:var(--ink-500); max-width:360px;">Select a duty type to start assigning duties.</div>
       </div>
 
-      <div class="assign-board">
+      <div class="assign-board" id="assignBoard" style="opacity:.45; pointer-events:none;">
         <div class="card assign-col">
           <div class="card-title">Main Places</div>
           <input type="text" id="assignPlacesSearch" class="mini-search" placeholder="Search main places..." />
@@ -574,6 +610,11 @@ const renderers = {
             <input type="text" id="assignedSearchInput" placeholder="Search by guard or main place..." />
           </div>
           <div class="toolbar-right">
+            <select id="assignedDutyTypeFilter" title="Filter by duty type">
+              <option value="" selected disabled>Select duty type</option>
+              <option value="Day Duty">Day Duty</option>
+              <option value="Night Duty">Night Duty</option>
+            </select>
             <input type="date" id="assignedDateFilter" title="Filter by duty date" value="${todayISODate()}" />
             <div class="page-size-field">
               <label for="assignedPageSizeSelect">Rows per page</label>
@@ -584,10 +625,10 @@ const renderers = {
                 <option value="100">100</option>
               </select>
             </div>
-            <button class="btn btn-outline" id="downloadAssignedPdfBtn" type="button">⬇ Download PDF</button>
+            <button class="btn btn-outline" id="downloadAssignedPdfBtn" type="button" disabled title="Select a duty type to download">⬇ Download PDF</button>
           </div>
         </div>
-        <div id="assignedTableWrap"><p style="color:var(--ink-500); font-size:13px;"><span class="spinner" role="status" aria-label="Loading"></span><span class="loader-text">Loading...</span></p></div>
+        <div id="assignedTableWrap"><p style="color:var(--ink-500); font-size:13px;">Select a duty type to view the assigned duties.</p></div>
         <div class="pagination-bar">
           <div class="page-info" id="assignedPageInfo"></div>
           <div class="page-controls">
@@ -599,41 +640,33 @@ const renderers = {
     </div>
 
     <div class="tab-panel" id="tab-scanTime" style="display:none;">
-      <div class="card" style="max-width:480px;">
-        <div class="card-title">Scan Time Window</div>
-        <p id="scanTimeCurrent" style="color:var(--ink-500); font-size:13px; margin:-6px 0 16px;">Loading current window...</p>
-        <div class="field">
-          <label>From</label>
-          <div style="display:flex; gap:8px;">
-            <select id="scanTimeFromHour" style="flex:1; min-width:0; padding:10px 6px; text-align:center;">
-              ${Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('')}
-            </select>
-            <select id="scanTimeFromMinute" style="flex:1; min-width:0; padding:10px 6px; text-align:center;">
-              ${Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0')).map(m => `<option value="${m}">${m}</option>`).join('')}
-            </select>
-            <select id="scanTimeFromAmPm" style="flex:1; min-width:0; padding:10px 6px; text-align:center;">
-              <option value="AM">AM</option>
-              <option value="PM">PM</option>
-            </select>
-          </div>
-        </div>
-        <div class="field">
-          <label>To</label>
-          <div style="display:flex; gap:8px;">
-            <select id="scanTimeToHour" style="flex:1; min-width:0; padding:10px 6px; text-align:center;">
-              ${Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('')}
-            </select>
-            <select id="scanTimeToMinute" style="flex:1; min-width:0; padding:10px 6px; text-align:center;">
-              ${Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0')).map(m => `<option value="${m}">${m}</option>`).join('')}
-            </select>
-            <select id="scanTimeToAmPm" style="flex:1; min-width:0; padding:10px 6px; text-align:center;">
-              <option value="AM">AM</option>
-              <option value="PM">PM</option>
-            </select>
-          </div>
-        </div>
-        <div class="error-text" id="scanTimeError"></div>
-        <button class="btn btn-primary" id="saveScanTimeBtn" type="button" style="margin-top:16px; width:auto; padding:10px 22px;">Submit</button>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 400px)); gap:16px; align-items:start;">
+        ${[
+          { key: 'dayDuty', title: 'Day Duty' },
+          { key: 'nightDuty', title: 'Night Duty' },
+        ].map(({ key, title }) => `
+        <div class="card" style="margin-bottom:0;">
+          <div class="card-title">${title}</div>
+          <p id="${key}Current" style="color:var(--ink-500); font-size:13px; margin:-6px 0 16px;">Loading current window...</p>
+          ${['From', 'To'].map(side => `
+          <div class="field">
+            <label>${side}</label>
+            <div style="display:flex; gap:8px;">
+              <select id="${key}${side}Hour" style="flex:1; min-width:0; padding:10px 6px; text-align:center;">
+                ${Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('')}
+              </select>
+              <select id="${key}${side}Minute" style="flex:1; min-width:0; padding:10px 6px; text-align:center;">
+                ${Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0')).map(m => `<option value="${m}">${m}</option>`).join('')}
+              </select>
+              <select id="${key}${side}AmPm" style="flex:1; min-width:0; padding:10px 6px; text-align:center;">
+                <option value="AM">AM</option>
+                <option value="PM">PM</option>
+              </select>
+            </div>
+          </div>`).join('')}
+          <div class="error-text" id="${key}Error"></div>
+          <button class="btn btn-primary" id="${key}SaveBtn" type="button" style="margin-top:16px; width:auto; padding:10px 22px;">Submit</button>
+        </div>`).join('')}
       </div>
     </div>
   `,
@@ -714,20 +747,20 @@ function attachHandlers(section) {
         document.getElementById('activeSubPlacesStat').textContent = '—';
       });
 
-    fetchQrScansViaApi({ date: todayISODate(), limit: 1 })
+    fetchQrScansViaApi({ date: todayISODate(), dutyType: homeDutyType, limit: 1 })
       .then(res => {
         document.getElementById('qrScansTodayStat').textContent = res.total;
         document.getElementById('qrScansTodayNote').textContent =
-          res.total > 0 ? 'Scans recorded today' : 'Shift awaiting initial scan';
+          res.total > 0 ? `${homeDutyType} scans today` : `No ${homeDutyType.toLowerCase()} scans yet`;
       })
       .catch(() => { document.getElementById('qrScansTodayStat').textContent = '—'; });
 
     // Duties assigned for today's date (GET /api/duty-assignments?date=today).
-    fetchDutyAssignmentsViaApi({ date: todayISODate(), limit: 1 })
+    fetchDutyAssignmentsViaApi({ date: todayISODate(), dutyType: homeDutyType, limit: 1 })
       .then(res => {
         document.getElementById('todayDutiesStat').textContent = res.total;
         document.getElementById('todayDutiesNote').textContent =
-          res.total > 0 ? 'Guards on duty today' : 'No duties assigned yet';
+          res.total > 0 ? `On ${homeDutyType.toLowerCase()} today` : `No ${homeDutyType.toLowerCase()} assigned`;
       })
       .catch(() => { document.getElementById('todayDutiesStat').textContent = '—'; });
 
@@ -853,7 +886,7 @@ function attachHandlers(section) {
       const body = document.getElementById('recentScansBody');
       const filtered = recentScansState.rows.filter(matchesRecentScansFilters);
       if (!filtered.length) {
-        const msg = recentScansState.rows.length ? 'No scans match your search/filter.' : 'No duty assigned for this date.';
+        const msg = recentScansState.rows.length ? 'No scans match your search/filter.' : `No ${homeDutyType} assigned for this date.`;
         body.innerHTML = `<tr><td colspan="8" style="color:var(--ink-500); font-size:13px;">${msg}</td></tr>`;
         updateRecentScansPager(0, 1);
         return;
@@ -929,9 +962,9 @@ function attachHandlers(section) {
     function updateRecentScansHeading(date) {
       const heading = document.getElementById('recentScansHeading');
       if (!heading) return;
-      heading.textContent = date === todayISODate()
+      heading.textContent = (date === todayISODate()
         ? "Today's QR Code Scanned Data"
-        : `${formatIsoDateDisplay(date)} QR Code Scanned Data`;
+        : `${formatIsoDateDisplay(date)} QR Code Scanned Data`) + ` · ${homeDutyType}`;
     }
 
     function loadRecentScans(date) {
@@ -940,7 +973,7 @@ function attachHandlers(section) {
         '<tr><td colspan="8" style="color:var(--ink-500); font-size:13px;"><span class="spinner" role="status" aria-label="Loading"></span><span class="loader-text">Loading...</span></td></tr>';
       updateRecentScansPager(0, 1);
 
-      fetchQrScanCoverageViaApi({ date })
+      fetchQrScanCoverageViaApi({ date, dutyType: homeDutyType })
         .then(res => {
           recentScansState.rows = flattenRecentScansCoverage(res.data);
           renderRecentScansTable();
@@ -998,7 +1031,24 @@ function attachHandlers(section) {
       renderRecentScansTable();
     });
 
-    document.getElementById('downloadRecentScansPdfBtn').addEventListener('click', () => {
+    // Reads the university logo as a data URL for the PDF header (null if it can't be loaded).
+    async function loadLogoDataUrl() {
+      try {
+        const res = await fetch('images/aus_logo.png');
+        if (!res.ok) return null;
+        const blob = await res.blob();
+        return await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      } catch (e) {
+        return null;
+      }
+    }
+
+    document.getElementById('downloadRecentScansPdfBtn').addEventListener('click', async () => {
       const filtered = recentScansState.rows.filter(matchesRecentScansFilters);
       if (!filtered.length) {
         alert('Nothing to export for this date/search/filter.');
@@ -1043,20 +1093,76 @@ function attachHandlers(section) {
         body.push(row);
       }
 
-      const doc = new jspdf.jsPDF({ orientation: 'landscape' });
+      const doc = new jspdf.jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const pageW = doc.internal.pageSize.getWidth();
+      const marginX = 14;
+
+      // ---- Header: university logo (left) + report title (right) ----
+      const logo = await loadLogoDataUrl();
+      if (logo) {
+        const logoH = 11;
+        doc.addImage(logo, 'PNG', marginX, 8, logoH * (1766 / 229), logoH);
+      }
+      doc.setTextColor(18, 33, 58);
+      doc.setFont(undefined, 'bold');
       doc.setFontSize(14);
-      doc.text(`Date wise Data — ${recentScansState.date}`, 14, 15);
+      doc.text('Security Guard QR Scan Report', pageW - marginX, 13, { align: 'right' });
+      // "Check Point" in the logo's two colours (orange + blue), right-aligned.
+      doc.setFont(undefined, 'bold');
+      doc.setFontSize(12);
+      const cpWidth = doc.getTextWidth('Check Point');
+      const cpX = pageW - marginX - cpWidth;
+      doc.setTextColor(244, 112, 37);
+      doc.text('Check', cpX, 19.5);
+      doc.setTextColor(3, 81, 155);
+      doc.text('Point', cpX + doc.getTextWidth('Check '), 19.5);
+      doc.setFont(undefined, 'normal');
+      doc.setDrawColor(18, 33, 58);
+      doc.setLineWidth(0.5);
+      doc.line(marginX, 22, pageW - marginX, 22);
+
+      // ---- Report details (above the table) ----
+      const guardCount = new Set(filtered.map(r => r.guardEmpId)).size;
+      const scannedCount = filtered.filter(r => r.scanned).length;
+      const generatedBy = user ? `${user.first_name} (${user.roll_no})` : '—';
+      const info = [
+        [['Date', recentScansState.date], ['Duty Type', homeDutyType], ['Generated On', formatDateTime(new Date().toISOString())], ['Generated By', generatedBy]],
+        [['Total Guards', String(guardCount)], ['Total Sub Places', String(filtered.length)], ['Scanned', String(scannedCount)], ['Not Scanned', String(filtered.length - scannedCount)]],
+      ];
+      const colW = (pageW - marginX * 2) / 4;
+      info.forEach((row, rIdx) => {
+        row.forEach(([label, value], cIdx) => {
+          const x = marginX + cIdx * colW;
+          const y = 29 + rIdx * 7;
+          doc.setFontSize(9);
+          doc.setFont(undefined, 'bold');
+          doc.setTextColor(90, 100, 120);
+          doc.text(`${label}:`, x, y);
+          const labelW = doc.getTextWidth(`${label}:`);
+          doc.setFont(undefined, 'normal');
+          doc.setTextColor(18, 33, 58);
+          doc.text(String(value), x + labelW + 2, y);
+        });
+      });
+      doc.setTextColor(0, 0, 0);
+
       doc.autoTable({
-        startY: 22,
+        startY: 45,
         theme: 'grid',
         head: [['#', 'Guard', 'Main Place', 'Sub #', 'Sub Place', 'Status', 'Scanned At (Timeline)', 'Geo-Coordinates']],
         body,
         styles: { fontSize: 8, lineWidth: 0.1, lineColor: [38, 56, 90] },
         headStyles: { fillColor: [18, 33, 58] },
+        margin: { left: marginX, right: marginX, bottom: 14 },
+        didDrawPage: (data) => {
+          doc.setFontSize(8);
+          doc.setTextColor(120, 130, 150);
+          doc.text(`Page ${data.pageNumber}`, pageW - marginX, doc.internal.pageSize.getHeight() - 7, { align: 'right' });
+        },
         // keep the time and coordinates on one line each (no wrapping mid-value)
         columnStyles: { 6: { cellWidth: 'wrap' }, 7: { cellWidth: 'wrap' } },
       });
-      doc.save(`qr_scans_${recentScansState.date}.pdf`);
+      doc.save(`qr_scans_${recentScansState.date}_${homeDutyType.toLowerCase().replace(/\s+/g, '_')}.pdf`);
     });
 
     loadRecentScans(recentScansState.date);
@@ -2087,7 +2193,7 @@ function attachHandlers(section) {
       btn.textContent = 'Preparing...';
       try {
         const res = await fetchUsersViaApi({ search: state.search, page: 1, limit: 10000 });
-        await exportSecurityDataToPdf(res.data, { filename: `security_data_${Date.now()}.pdf` });
+        await exportSecurityDataToPdf(res.data, { filename: `security_data_${Date.now()}.pdf`, search: state.search });
       } catch (err) {
         alert('Could not export: ' + err.message);
       } finally {
@@ -2599,16 +2705,23 @@ function attachHandlers(section) {
       h = h % 12 || 12;
       return { hour: String(h), minute, amPm };
     }
-    function setTimeFields(prefix, hour, minute, amPm) {
-      document.getElementById(`scanTime${prefix}Hour`).value = hour;
-      document.getElementById(`scanTime${prefix}Minute`).value = minute;
-      document.getElementById(`scanTime${prefix}AmPm`).value = amPm;
+    // Three cards share the same logic. Each saves into the one scansettings
+    // document in MongoDB; `type` tells the server which fields to update.
+    const TIME_CARDS = [
+      { key: 'dayDuty', type: 'day', label: 'day duty time', pick: d => d.day || {} },
+      { key: 'nightDuty', type: 'night', label: 'night duty time', pick: d => d.night || {} },
+    ];
+
+    function setTimeFields(key, side, hour, minute, amPm) {
+      document.getElementById(`${key}${side}Hour`).value = hour;
+      document.getElementById(`${key}${side}Minute`).value = minute;
+      document.getElementById(`${key}${side}AmPm`).value = amPm;
     }
-    function readTimeFields(prefix) {
+    function readTimeFields(key, side) {
       return to24Hour(
-        document.getElementById(`scanTime${prefix}Hour`).value,
-        document.getElementById(`scanTime${prefix}Minute`).value,
-        document.getElementById(`scanTime${prefix}AmPm`).value
+        document.getElementById(`${key}${side}Hour`).value,
+        document.getElementById(`${key}${side}Minute`).value,
+        document.getElementById(`${key}${side}AmPm`).value
       );
     }
     function formatTime12(hhmm) {
@@ -2616,58 +2729,58 @@ function attachHandlers(section) {
       return `${hour}:${minute} ${amPm}`;
     }
     // The readable "Current window: ..." line above the dropdowns - kept in
-    // sync both when the tab loads and right after a successful save, so
-    // the admin can see what's actually saved without having to read six
-    // dropdowns.
-    function showCurrentWindow(from, to) {
-      const el = document.getElementById('scanTimeCurrent');
-      el.textContent = (from && to)
+    // sync both when the tab loads and right after a successful save.
+    function showCurrentWindow(card, from, to) {
+      document.getElementById(`${card.key}Current`).textContent = (from && to)
         ? `Current window: ${formatTime12(from)} – ${formatTime12(to)}`
-        : 'No scan time window set yet.';
+        : `No ${card.label} set yet.`;
+    }
+    function applySavedWindow(card, saved) {
+      const { from, to } = card.pick(saved);
+      showCurrentWindow(card, from, to);
+      if (from) { const f = from24Hour(from); setTimeFields(card.key, 'From', f.hour, f.minute, f.amPm); }
+      if (to) { const t = from24Hour(to); setTimeFields(card.key, 'To', t.hour, t.minute, t.amPm); }
     }
 
-    // Shows whatever window is already saved, so reopening this tab doesn't
-    // look like it reset to blank defaults.
+    // Shows whatever is already saved, so reopening this tab doesn't look
+    // like it reset to blank defaults.
     async function loadScanTime() {
-      const errBox = document.getElementById('scanTimeError');
-      errBox.textContent = '';
+      TIME_CARDS.forEach(c => { document.getElementById(`${c.key}Error`).textContent = ''; });
       try {
-        const { from, to } = await fetchScanTimeViaApi();
-        showCurrentWindow(from, to);
-        if (from) {
-          const f = from24Hour(from);
-          setTimeFields('From', f.hour, f.minute, f.amPm);
-        }
-        if (to) {
-          const t = from24Hour(to);
-          setTimeFields('To', t.hour, t.minute, t.amPm);
-        }
+        const saved = await fetchScanTimeViaApi();
+        TIME_CARDS.forEach(c => applySavedWindow(c, saved));
       } catch (err) {
-        document.getElementById('scanTimeCurrent').textContent = '';
-        errBox.textContent = err.message || 'Could not load the saved scan time.';
+        TIME_CARDS.forEach(c => {
+          document.getElementById(`${c.key}Current`).textContent = '';
+          document.getElementById(`${c.key}Error`).textContent = err.message || 'Could not load the saved time.';
+        });
       }
     }
     loadScanTime();
 
-    document.getElementById('saveScanTimeBtn').addEventListener('click', async () => {
-      const errBox = document.getElementById('scanTimeError');
-      errBox.textContent = '';
-      const btn = document.getElementById('saveScanTimeBtn');
-      const from = readTimeFields('From');
-      const to = readTimeFields('To');
+    TIME_CARDS.forEach(card => {
+      document.getElementById(`${card.key}SaveBtn`).addEventListener('click', async () => {
+        const errBox = document.getElementById(`${card.key}Error`);
+        errBox.textContent = '';
+        const btn = document.getElementById(`${card.key}SaveBtn`);
+        const from = readTimeFields(card.key, 'From');
+        const to = readTimeFields(card.key, 'To');
 
-      btn.disabled = true;
-      const originalLabel = btn.textContent;
-      btn.textContent = 'Saving...';
-      try {
-        await saveScanTimeViaApi(from, to);
-        alert('Scan time window saved.');
-      } catch (err) {
-        errBox.textContent = err.message || 'Could not save the scan time window.';
-      } finally {
-        btn.disabled = false;
-        btn.textContent = originalLabel;
-      }
+        btn.disabled = true;
+        const originalLabel = btn.textContent;
+        btn.textContent = 'Saving...';
+        try {
+          const saved = await saveScanTimeViaApi(from, to, card.type);
+          const w = card.pick(saved);
+          showCurrentWindow(card, w.from, w.to);
+          alert(`Saved ${card.label}.`);
+        } catch (err) {
+          errBox.textContent = err.message || `Could not save the ${card.label}.`;
+        } finally {
+          btn.disabled = false;
+          btn.textContent = originalLabel;
+        }
+      });
     });
 
     // ======================================================================
@@ -2675,7 +2788,8 @@ function attachHandlers(section) {
     // ======================================================================
     let placesData = [];
     let guardsData = [];
-    let existingDutiesForDate = []; // already saved in the DB for the picked date
+    let existingDutiesAllTypes = []; // everything saved in the DB for the picked date (Day + Night)
+    let existingDutiesForDate = []; // ...only the ones of the selected duty type - Day and Night are kept separate
     let pendingDuties = []; // { clientId, dutyPlaceId, mainPlace, subPlaces, guardId, guardEmpId, guardName } - new, not yet submitted
     let clientIdCounter = 0;
     let placesFilter = '';
@@ -2683,6 +2797,50 @@ function attachHandlers(section) {
 
     // Requirement 1: never allow picking a duty date before today.
     document.getElementById('assignDutyDate').min = todayISODate();
+    // Default to today.
+    document.getElementById('assignDutyDate').value = todayISODate();
+
+    // "YYYY-MM-DD" -> "DD-MM-YYYY", plus n days (pure UTC math, no timezone drift).
+    function ddmmyyyy(iso, addDays = 0) {
+      const [y, m, d] = iso.split('-').map(Number);
+      const dt = new Date(Date.UTC(y, m - 1, d + addDays));
+      return `${String(dt.getUTCDate()).padStart(2, '0')}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${dt.getUTCFullYear()}`;
+    }
+    // Day Duty = one date; Night Duty = this date and the next day.
+    function dutyRangeText(iso, type) {
+      if (!iso) return '';
+      return type === 'Night Duty' ? `${ddmmyyyy(iso)}_${ddmmyyyy(iso, 1)}` : ddmmyyyy(iso);
+    }
+    // Duties saved before duty types existed had a two-date range = night.
+    function typeOf(duty) { return duty.dutyType || 'Night Duty'; }
+
+    function currentDutyType() { return document.getElementById('assignDutyType').value; }
+
+    // The board only unlocks once a duty type is chosen.
+    function applyDutyTypeFilter() {
+      const type = currentDutyType();
+      existingDutiesForDate = type ? existingDutiesAllTypes.filter(d => typeOf(d) === type) : [];
+    }
+
+    function refreshDutyTypeUi() {
+      applyDutyTypeFilter();
+      const type = currentDutyType();
+      const date = document.getElementById('assignDutyDate').value;
+      const board = document.getElementById('assignBoard');
+      const note = document.getElementById('assignDutyRangeNote');
+      board.style.opacity = type ? '' : '.45';
+      board.style.pointerEvents = type ? '' : 'none';
+      if (!type) {
+        note.textContent = 'Select a duty type to start assigning duties.';
+      } else if (type === 'Night Duty') {
+        note.innerHTML = date ? `Night Duty covers <b>two dates</b>: ${ddmmyyyy(date)} and ${ddmmyyyy(date, 1)}.` : 'Night Duty covers two dates (the duty date and the next day).';
+      } else {
+        note.innerHTML = date ? `Day Duty covers <b>one date</b>: ${ddmmyyyy(date)}.` : 'Day Duty covers one date.';
+      }
+      renderDropZone();
+      if (placesData.length) renderPlacesList();
+      if (guardsData.length) renderGuardsList();
+    }
 
     // Combines what's already saved for this date with what's being built
     // right now, so a guard/place can't be dragged in twice for the same day.
@@ -2753,7 +2911,7 @@ function attachHandlers(section) {
       const box = document.getElementById('assignDropZone');
       const existingHtml = existingDutiesForDate.map((d, i) => `
         <div class="duty-mini-card existing-duty">
-          <div class="existing-badge"><span class="duty-no">${i + 1}</span>Already assigned</div>
+          <div class="existing-badge"><span class="duty-no">${i + 1}</span>Already assigned · ${typeOf(d)}</div>
           <div class="mini-place preserve-space">${escapeHtml(d.mainPlace)}</div>
           <div>${(d.subPlaces || []).map(s => `<span class="chip">${escapeHtml(s)}</span>`).join('')}</div>
           <div class="mini-guard-slot filled">${escapeHtml(d.guardName)} (${escapeHtml(d.guardEmpId)})</div>
@@ -2762,16 +2920,22 @@ function attachHandlers(section) {
       const pendingHtml = pendingDuties.map((d, i) => `
         <div class="duty-mini-card" data-client-id="${d.clientId}">
           <button type="button" class="remove-btn" data-client-id="${d.clientId}" title="Remove this duty">✕</button>
-          <div class="existing-badge new-badge"><span class="duty-no">${existingDutiesForDate.length + i + 1}</span>New</div>
+          <div class="existing-badge new-badge"><span class="duty-no">${i + 1}</span>New</div>
           <div class="mini-place preserve-space">${escapeHtml(d.mainPlace)}</div>
           <div>${d.subPlaces.length ? d.subPlaces.map(s => `<span class="chip">${escapeHtml(s)}</span>`).join('') : '<span style="color:var(--ink-500); font-size:11.5px;">No sub places</span>'}</div>
           <div class="mini-guard-slot${d.guardName ? ' filled' : ''}" data-client-id="${d.clientId}">${d.guardName ? escapeHtml(d.guardName) : 'Drop a guard here'}</div>
         </div>`).join('');
 
+      // Layout (top to bottom): the drop target (always visible, sticky), the
+      // NEW duties being built, then the OLD duties already saved for this
+      // date. New work stays at the top however many old duties there are.
       const hasAny = existingDutiesForDate.length + pendingDuties.length > 0;
-      const hintHtml = `<div class="assign-dropzone-hint">${hasAny ? '+ Drag a main place here to add another duty' : 'Drag a main place here to start'}</div>`;
+      const hintHtml = `<div class="assign-dropzone-hint">${hasAny ? '+ Drag a main place here to add a new duty' : 'Drag a main place here to start'}</div>`;
+      const existingSection = existingDutiesForDate.length
+        ? `<div class="assign-section-title">Already assigned (${existingDutiesForDate.length})</div>${existingHtml}`
+        : '';
 
-      box.innerHTML = existingHtml + pendingHtml + hintHtml;
+      box.innerHTML = hintHtml + pendingHtml + existingSection;
       // the batch changed - any earlier preview is now stale
       document.getElementById('assignPreviewWrap').innerHTML = '';
     }
@@ -2803,6 +2967,7 @@ function attachHandlers(section) {
     // column, and so its places/guards can't be dragged in again.
     async function loadExistingDutiesForDate(dateStr) {
       if (!dateStr) {
+        existingDutiesAllTypes = [];
         existingDutiesForDate = [];
         renderDropZone();
         renderPlacesList();
@@ -2811,18 +2976,30 @@ function attachHandlers(section) {
       }
       try {
         const res = await fetchDutyAssignmentsViaApi({ date: dateStr, limit: 1000 });
-        existingDutiesForDate = res.data;
+        existingDutiesAllTypes = res.data;
       } catch (err) {
-        existingDutiesForDate = [];
+        existingDutiesAllTypes = [];
         alert(`Could not check existing duties for that date: ${err.message}`);
       }
+      applyDutyTypeFilter();
       renderDropZone();
       renderPlacesList();
       renderGuardsList();
     }
 
     document.getElementById('assignDutyDate').addEventListener('change', (e) => {
+      refreshDutyTypeUi();
       loadExistingDutiesForDate(e.target.value);
+    });
+    let lastDutyType = '';
+    document.getElementById('assignDutyType').addEventListener('change', (e) => {
+      if (pendingDuties.length > 0 && !confirm('Changing the duty type will clear the duty cards you have not submitted yet. Continue?')) {
+        e.target.value = lastDutyType;
+        return;
+      }
+      lastDutyType = e.target.value;
+      pendingDuties = [];
+      refreshDutyTypeUi();
     });
 
     let placesSearchTimer;
@@ -2899,6 +3076,7 @@ function attachHandlers(section) {
       dropZone.classList.remove('drag-over');
       dropZone.querySelectorAll('.mini-guard-slot.drag-over').forEach(s => s.classList.remove('drag-over'));
 
+      if (!currentDutyType()) { alert('Select a duty type first.'); return; }
       let payload;
       try { payload = JSON.parse(e.dataTransfer.getData('text/plain')); } catch (err) { return; }
 
@@ -2946,6 +3124,8 @@ function attachHandlers(section) {
     document.getElementById('previewAssignBtn').addEventListener('click', () => {
       const dutyDate = document.getElementById('assignDutyDate').value;
 
+      const dutyType = currentDutyType();
+      if (!dutyType) { alert('Select a duty type first.'); return; }
       if (!dutyDate) { alert('Pick a duty date first.'); return; }
       if (dutyDate < todayISODate()) { alert('Duty date cannot be in the past. Please choose today or a later date.'); return; }
       // Nothing to show at all - no new duties dragged in AND nothing already
@@ -2960,7 +3140,7 @@ function attachHandlers(section) {
 
       openModal(`
         <div>
-          <div class="card-title" style="margin-bottom:10px;">Preview — ${pendingDuties.length} new duty assignment(s) for ${dutyDate}${existingDutiesForDate.length ? ` (${existingDutiesForDate.length} already assigned)` : ''}</div>
+          <div class="card-title" style="margin-bottom:10px;">Preview — ${pendingDuties.length} new ${dutyType} assignment(s) for ${dutyRangeText(dutyDate, dutyType)}${existingDutiesForDate.length ? ` (${existingDutiesForDate.length} already assigned)` : ''}</div>
           <div class="table-scroll">
             <table>
               <thead><tr><th>#</th><th>Guard</th><th>Main Place</th><th>Sub Places</th><th>Status</th></tr></thead>
@@ -3018,6 +3198,7 @@ function attachHandlers(section) {
         try {
           const res = await bulkAssignDutiesViaApi({
             dutyDate,
+            dutyType,
             assignments: pendingDuties.map(d => ({
               guardEmpId: d.guardEmpId,
               guardName: d.guardName,
@@ -3048,11 +3229,13 @@ function attachHandlers(section) {
 
     loadAssignBoard();
     renderDropZone();
+    refreshDutyTypeUi();
+    loadExistingDutiesForDate(document.getElementById('assignDutyDate').value);
 
     // ======================================================================
     // Tab 2: Show Assigned Duties (list + edit + delete)
     // ======================================================================
-    const assignedState = { search: '', date: todayISODate(), page: 1, limit: 10 };
+    const assignedState = { search: '', date: todayISODate(), dutyType: '', page: 1, limit: 10 };
     let currentAssignments = [];
 
     function renderAssignedTable(res) {
@@ -3065,23 +3248,28 @@ function attachHandlers(section) {
         wrap.innerHTML = `
           <div class="table-scroll">
             <table>
-              <thead><tr><th>#</th><th>Guard</th><th>Main Place</th><th>Sub Places</th><th>Duty Date</th><th>Status</th><th>Added On</th><th></th></tr></thead>
+              <thead><tr><th>#</th><th>Guard</th><th>Main Place</th><th>Sub Places</th><th>Duty Type</th><th>Duty Date</th><th>Status</th><th>Added On</th><th></th></tr></thead>
               <tbody>
                 ${res.data.map((a, i) => {
                   const completed = isPastDutyDate(a.dutyDate);
+                  const needType = !assignedState.dutyType; // edit/delete only once a duty type is selected
+                  const locked = completed || needType;
+                  const lockWhy = completed ? 'Completed duties cannot be edited' : 'Select a duty type to edit';
+                  const lockWhyDel = completed ? 'Completed duties cannot be deleted' : 'Select a duty type to delete';
                   return `
                   <tr data-id="${a._id}">
                     <td class="serial-col">${startSerial + i + 1}</td>
                     <td><b>${escapeHtml(a.guardName)}</b><br><span style="color:var(--ink-500); font-size:11.5px;">${escapeHtml(a.guardEmpId)}</span></td>
                     <td class="preserve-space">${escapeHtml(a.mainPlace)}</td>
                     <td>${a.subPlaces.map(s => `<span class="chip">${s}</span>`).join('')}</td>
+                    <td>${a.dutyType ? escapeHtml(a.dutyType) : '<span style="color:var(--ink-500);">—</span>'}</td>
                     <td><span class="badge badge-amber">${escapeHtml(a.dateRange)}</span></td>
                     <td><span class="badge ${completed ? 'badge-neutral' : 'badge-success'}">${completed ? 'Completed' : 'Upcoming'}</span></td>
                     <td style="white-space:nowrap; color:var(--ink-300); font-size:12.5px;">${formatDateTime(a.createdAt)}</td>
                     <td>
                       <div class="row-actions">
-                        <button class="edit-btn" data-id="${a._id}" title="${completed ? 'Completed duties cannot be edited' : 'Edit'}" ${completed ? 'disabled' : ''}>✏️</button>
-                        <button class="delete-btn" data-id="${a._id}" title="${completed ? 'Completed duties cannot be deleted' : 'Delete'}" ${completed ? 'disabled' : ''}>🗑</button>
+                        <button class="edit-btn" data-id="${a._id}" title="${locked ? lockWhy : 'Edit'}" ${locked ? 'disabled' : ''}>✏️</button>
+                        <button class="delete-btn" data-id="${a._id}" title="${locked ? lockWhyDel : 'Delete'}" ${locked ? 'disabled' : ''}>🗑</button>
                       </div>
                     </td>
                   </tr>`;
@@ -3099,8 +3287,15 @@ function attachHandlers(section) {
     }
 
     function loadAssignedDuties() {
+      if (!assignedState.dutyType) {
+        document.getElementById('assignedTableWrap').innerHTML = '<p style="color:var(--ink-500); font-size:13px;">Select a duty type to view the assigned duties.</p>';
+        document.getElementById('assignedPageInfo').textContent = '';
+        document.getElementById('assignedPrevBtn').disabled = true;
+        document.getElementById('assignedNextBtn').disabled = true;
+        return;
+      }
       document.getElementById('assignedTableWrap').innerHTML = '<p style="color:var(--ink-500); font-size:13px;"><span class="spinner" role="status" aria-label="Loading"></span><span class="loader-text">Loading...</span></p>';
-      fetchDutyAssignmentsViaApi({ search: assignedState.search, date: assignedState.date, page: assignedState.page, limit: assignedState.limit })
+      fetchDutyAssignmentsViaApi({ search: assignedState.search, date: assignedState.date, dutyType: assignedState.dutyType, page: assignedState.page, limit: assignedState.limit })
         .then(renderAssignedTable)
         .catch(err => {
           document.getElementById('assignedTableWrap').innerHTML = `<p style="color:var(--danger); font-size:13px;">Could not load data: ${escapeHtml(err.message)}</p>`;
@@ -3130,35 +3325,44 @@ function attachHandlers(section) {
       if (!a) return;
       await ensureBoardDataLoaded();
 
-      const dutyDateVal = a.dutyDate ? new Date(a.dutyDate).toISOString().slice(0, 10) : '';
-
+      const typeLabel = a.dutyType || 'Night Duty';
       openModal(`
-        <h3>Edit duty assignment</h3>
-        <div class="field">
-          <label>Guard</label>
-          <select id="editAssignGuard">
-            <option value="">Select guard</option>
-            ${guardsData.map(g => `<option value="${g._id}" data-emp-id="${escapeHtml(g.roll_no)}" data-name="${escapeHtml(g.first_name)}" ${g.roll_no === a.guardEmpId ? 'selected' : ''}>${escapeHtml(g.first_name)} (${escapeHtml(g.roll_no)})</option>`).join('')}
-          </select>
+        <div>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+            <h3 style="margin:0;">Edit duty assignment</h3>
+            <span class="badge ${typeLabel === 'Day Duty' ? 'badge-amber' : 'badge-neutral'}">${escapeHtml(typeLabel)}</span>
+          </div>
+          <p style="color:var(--ink-500); font-size:12.5px; margin:6px 0 16px;">Only the main place can be changed.</p>
+
+          <div style="border:1px solid var(--navy-line); border-radius:10px; padding:12px 14px; margin-bottom:18px; display:grid; grid-template-columns:90px 1fr; gap:10px 14px; font-size:13.5px; align-items:center;">
+            <span style="color:var(--ink-500);">Guard</span>
+            <span><b>${escapeHtml(a.guardName)}</b> <span style="color:var(--ink-500);">(${escapeHtml(a.guardEmpId)})</span></span>
+            <span style="color:var(--ink-500);">Duty type</span>
+            <span>${escapeHtml(typeLabel)}</span>
+            <span style="color:var(--ink-500);">Duty date</span>
+            <span><span class="badge badge-amber">${escapeHtml(a.dateRange)}</span></span>
+          </div>
+
+          <div class="field">
+            <label>Main place</label>
+            <select id="editAssignPlace">
+              <option value="">Select place</option>
+              ${placesData.map(p => `<option value="${p._id}" ${p.mainPlace === a.mainPlace ? 'selected' : ''}>${escapeHtml(p.mainPlace)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="field">
+            <label style="display:block; font-size:12.5px; color:var(--ink-300); margin-bottom:6px;">Sub places (assigned automatically)</label>
+            <div id="editAssignSubPlaces">${a.subPlaces.map(s => `<span class="chip">${escapeHtml(s)}</span>`).join('')}</div>
+          </div>
+          <p style="color:var(--ink-500); font-size:12px; margin:0 0 6px;">To change the guard, duty type or date, delete this duty and assign it again.</p>
+
+          <div class="error-text" id="editAssignError"></div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-outline" id="editAssignCancelBtn">Cancel</button>
+            <button type="button" class="btn btn-primary" id="editAssignSaveBtn" style="width:auto; padding:10px 20px;">Save Changes</button>
+          </div>
         </div>
-        <div class="field">
-          <label>Main place</label>
-          <select id="editAssignPlace">
-            <option value="">Select place</option>
-            ${placesData.map(p => `<option value="${p._id}" ${p.mainPlace === a.mainPlace ? 'selected' : ''}>${escapeHtml(p.mainPlace)}</option>`).join('')}
-          </select>
-        </div>
-        <div class="field">
-          <label style="display:block; font-size:12.5px; color:var(--ink-300); margin-bottom:6px;">Sub places (assigned automatically)</label>
-          <div id="editAssignSubPlaces">${a.subPlaces.map(s => `<span class="chip">${s}</span>`).join('')}</div>
-        </div>
-        <div class="field"><label>Duty date</label><input type="date" id="editAssignDate" value="${dutyDateVal}" min="${todayISODate()}" /></div>
-        <div class="error-text" id="editAssignError"></div>
-        <div class="modal-actions">
-          <button type="button" class="btn btn-outline" id="editAssignCancelBtn">Cancel</button>
-          <button type="button" class="btn btn-primary" id="editAssignSaveBtn" style="width:auto; padding:10px 20px;">Save Changes</button>
-        </div>
-      `);
+      `, { maxWidth: '520px' });
 
       let currentSubPlaces = a.subPlaces.slice();
       document.getElementById('editAssignPlace').addEventListener('change', (e) => {
@@ -3174,31 +3378,23 @@ function attachHandlers(section) {
         const errBox = document.getElementById('editAssignError');
         errBox.textContent = '';
 
-        const guardSelect = document.getElementById('editAssignGuard');
-        const guardOpt = guardSelect.options[guardSelect.selectedIndex];
         const placeSelect = document.getElementById('editAssignPlace');
         const placeOpt = placeSelect.options[placeSelect.selectedIndex];
-        const dutyDate = document.getElementById('editAssignDate').value;
 
-        if (!guardSelect.value || !placeSelect.value || !dutyDate || currentSubPlaces.length === 0) {
-          errBox.textContent = 'Guard, main place, and duty date are all required.';
-          return;
-        }
-        if (dutyDate < todayISODate()) {
-          errBox.textContent = 'Duty date cannot be moved into the past. Choose today or a later date.';
+        if (!placeSelect.value || currentSubPlaces.length === 0) {
+          errBox.textContent = 'Select a main place that has sub places.';
           return;
         }
 
         const btn = document.getElementById('editAssignSaveBtn');
         btn.disabled = true;
         try {
+          // Only the main place (and its sub places) is sent - the server keeps
+          // the guard, duty type and date exactly as they were.
           await updateDutyAssignmentViaApi(id, {
-            guardEmpId: guardOpt.dataset.empId,
-            guardName: guardOpt.dataset.name,
             dutyPlaceId: placeSelect.value,
             mainPlace: placeOpt.textContent,
             subPlaces: currentSubPlaces,
-            dutyDate,
           });
           closeModal();
           loadAssignedDuties();
@@ -3228,6 +3424,14 @@ function attachHandlers(section) {
       assignedState.page = 1;
       loadAssignedDuties();
     });
+    document.getElementById('assignedDutyTypeFilter').addEventListener('change', (e) => {
+      assignedState.dutyType = e.target.value;
+      assignedState.page = 1;
+      const pdfBtn = document.getElementById('downloadAssignedPdfBtn');
+      pdfBtn.disabled = !assignedState.dutyType;
+      pdfBtn.title = assignedState.dutyType ? 'Download the listed duties as PDF' : 'Select a duty type to download';
+      loadAssignedDuties();
+    });
     document.getElementById('assignedPrevBtn').addEventListener('click', () => { if (assignedState.page > 1) { assignedState.page -= 1; loadAssignedDuties(); } });
     document.getElementById('assignedNextBtn').addEventListener('click', () => { assignedState.page += 1; loadAssignedDuties(); });
 
@@ -3237,28 +3441,38 @@ function attachHandlers(section) {
       btn.disabled = true;
       btn.textContent = 'Preparing...';
       try {
-        const res = await fetchDutyAssignmentsViaApi({ search: assignedState.search, date: assignedState.date, page: 1, limit: 10000 });
+        const res = await fetchDutyAssignmentsViaApi({ search: assignedState.search, date: assignedState.date, dutyType: assignedState.dutyType, page: 1, limit: 10000 });
         const rows = res.data.map((a, i) => ({
           serial: i + 1,
           guard: `${a.guardName} (${a.guardEmpId})`,
           mainPlace: a.mainPlace,
           subPlaces: a.subPlaces.join(', '),
+          dutyType: a.dutyType || '—',
           dateRange: a.dateRange,
           status: isPastDutyDate(a.dutyDate) ? 'Completed' : 'Upcoming',
           addedOn: formatDateTime(a.createdAt),
         }));
-        exportRowsToPdf(
+        const upcomingCount = rows.filter(r => r.status === 'Upcoming').length;
+        await exportRowsToPdf(
           [
             { header: '#', key: 'serial' },
             { header: 'Guard', key: 'guard' },
             { header: 'Main Place', key: 'mainPlace' },
             { header: 'Sub Places', key: 'subPlaces' },
-            { header: 'Duty Date', key: 'dateRange' },
+            // With a date picked every row has the same duty date (shown in the header), so the column only appears for "All dates".
+            ...(assignedState.date ? [] : [{ header: 'Duty Date', key: 'dateRange' }]),
             { header: 'Status', key: 'status' },
             { header: 'Added On', key: 'addedOn' },
           ],
           rows,
-          { filename: `assigned_duties_${Date.now()}.pdf`, title: 'Assigned Duties' }
+          {
+            filename: `assigned_${assignedState.dutyType.toLowerCase().replace(/\s+/g, '_')}s_${Date.now()}.pdf`,
+            title: 'Assigned Duties Report',
+            details: [
+              [['Duty Type', assignedState.dutyType], ['Duty Date', assignedState.date ? (rows[0].dateRange || assignedState.date) : 'All dates'], ['Generated On', formatDateTime(new Date().toISOString())], ['Generated By', `${user.first_name} (${user.roll_no})`]],
+              [['Total Duties', String(rows.length)], ['Upcoming', String(upcomingCount)], ['Completed', String(rows.length - upcomingCount)], ['Search', assignedState.search || 'All']],
+            ],
+          }
         );
       } catch (err) {
         alert('Could not export: ' + err.message);

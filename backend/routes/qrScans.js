@@ -22,7 +22,7 @@ function minutesOf(hhmm) {
 // ScanSetting doc rather than querying for it itself, so the POST /
 // handler below can reuse the same doc to build its error message.
 function isWithinScanWindow(setting) {
-  if (!setting) return true;
+  if (!setting || !setting.from || !setting.to) return true;
 
   const nowIst = new Date(Date.now() + IST_OFFSET_MINUTES * 60000);
   const nowMin = nowIst.getUTCHours() * 60 + nowIst.getUTCMinutes();
@@ -45,6 +45,14 @@ function formatHHmm(hhmm) {
 }
 
 const { requireRole, ownGuardOrAdmin, selfOrAdminParam } = require('../middleware/auth');
+
+// Day / Night duty filter. Duties saved before duty types existed have no
+// dutyType and count as Night Duty. Returns null for anything else.
+function dutyTypeFilter(type) {
+  if (type === 'Day Duty') return 'Day Duty';
+  if (type === 'Night Duty') return { $in: ['Night Duty', null] };
+  return null;
+}
 
 const router = express.Router();
 
@@ -104,6 +112,21 @@ router.get('/', requireRole('admin'), async (req, res) => {
     if (dateStr) {
       const bounds = dayBoundsUTC(dateStr);
       if (bounds) filter.scannedAt = { $gte: bounds.start, $lt: bounds.end };
+    }
+
+    // Optional ?dutyType=Day Duty | Night Duty: only scans made on duties of
+    // that type. A night duty runs past midnight, so look at duties that
+    // started the day before as well.
+    const typeFilter = dutyTypeFilter(typeof req.query.dutyType === 'string' ? req.query.dutyType.trim() : '');
+    if (typeFilter) {
+      const assignFilter = { dutyType: typeFilter };
+      const b = dateStr ? dayBoundsUTC(dateStr) : null;
+      if (b) {
+        const from = new Date(b.start);
+        from.setUTCDate(from.getUTCDate() - 1);
+        assignFilter.dutyDate = { $gte: from, $lt: b.end };
+      }
+      filter.assignmentId = { $in: await DutyAssignment.find(assignFilter).distinct('_id') };
     }
 
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
@@ -207,6 +230,9 @@ router.get('/coverage', ownGuardOrAdmin, async (req, res) => {
       return res.status(400).json({ error: 'date is required (YYYY-MM-DD).' });
     }
 
+    const typeFilter = dutyTypeFilter(typeof req.query.dutyType === 'string' ? req.query.dutyType.trim() : '');
+    if (typeFilter) filter.dutyType = typeFilter;
+
     const assignments = await DutyAssignment.find(filter).sort({ dutyDate: -1, mainPlace: 1 }).lean();
     if (assignments.length === 0) {
       return res.json({ data: [], total: 0 });
@@ -234,6 +260,7 @@ router.get('/coverage', ownGuardOrAdmin, async (req, res) => {
         guardEmpId: a.guardEmpId,
         guardName: a.guardName,
         mainPlace: a.mainPlace,
+        dutyType: a.dutyType || 'Night Duty',
         dateRange: a.dateRange,
         dutyDate: a.dutyDate,
         status: dutyStatus(a.dutyDate),
@@ -299,7 +326,7 @@ router.post('/', ownGuardOrAdmin, async (req, res) => {
       }
     }
 
-    const scanSetting = await ScanSetting.findOne({});
+    const scanSetting = await ScanSetting.findOne({ dutyType: { $exists: false } });
     if (!isWithinScanWindow(scanSetting)) {
       return res.status(400).json({
         error: `Scanning is only accepted between ${formatHHmm(scanSetting.from)} and ${formatHHmm(scanSetting.to)}.`,
@@ -307,10 +334,13 @@ router.post('/', ownGuardOrAdmin, async (req, res) => {
     }
 
     const { start, end } = todayBoundsUTC();
-    const assignment = await DutyAssignment.findOne({
+    // A guard can have both a Day duty and a Night duty on the same date, so
+    // use the one whose sub places include the scanned code.
+    const todays = await DutyAssignment.find({
       guardEmpId,
       dutyDate: { $gte: start, $lt: end },
     });
+    const assignment = todays.find((d) => d.subPlaces.some((s) => s === scannedSubPlace)) || todays[0];
 
     if (!assignment) {
       return res.status(404).json({ error: 'You have no duty assigned for today.' });

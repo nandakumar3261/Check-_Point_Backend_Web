@@ -224,10 +224,11 @@ async function deleteDutyPlaceViaApi(id) {
  * Duty assignments (see routes/dutyAssignments.js, models/DutyAssignment.js).
  */
 
-async function fetchDutyAssignmentsViaApi({ search, date, page = 1, limit = 10 } = {}) {
+async function fetchDutyAssignmentsViaApi({ search, date, dutyType, page = 1, limit = 10 } = {}) {
   const params = new URLSearchParams();
   if (search) params.set('search', search);
   if (date) params.set('date', date);
+  if (dutyType) params.set('dutyType', dutyType);
   params.set('page', page);
   params.set('limit', limit);
 
@@ -283,10 +284,11 @@ async function fetchMyDutiesViaApi(guardEmpId) {
  * QR scans (see routes/qrScans.js, models/QrScan.js).
  */
 
-async function fetchQrScansViaApi({ search, date, page = 1, limit = 10 } = {}) {
+async function fetchQrScansViaApi({ search, date, dutyType, page = 1, limit = 10 } = {}) {
   const params = new URLSearchParams();
   if (search) params.set('search', search);
   if (date) params.set('date', date);
+  if (dutyType) params.set('dutyType', dutyType);
   params.set('page', page);
   params.set('limit', limit);
 
@@ -314,10 +316,11 @@ async function fetchMyQrScansViaApi({ guardEmpId, date } = {}) {
  * tapping a guard on the left shows their main place + sub-place scan
  * detail on the right.
  */
-async function fetchQrScanCoverageViaApi({ date, guardEmpId } = {}) {
+async function fetchQrScanCoverageViaApi({ date, guardEmpId, dutyType } = {}) {
   const params = new URLSearchParams();
   if (date) params.set('date', date);
   if (guardEmpId) params.set('guardEmpId', guardEmpId);
+  if (dutyType) params.set('dutyType', dutyType);
 
   const res = await apiFetch(`/api/qr-scans/coverage?${params.toString()}`);
   return readJsonResponse(res); // { data, total }
@@ -376,16 +379,18 @@ async function uploadProfilePicViaApi(rollNo, file) {
  */
 async function fetchScanTimeViaApi() {
   const res = await apiFetch('/api/scan-settings');
-  return readJsonResponse(res); // { from, to } - both null if never saved
+  // { from, to, day: { from, to }, night: { from, to } } - nulls if never saved
+  return readJsonResponse(res);
 }
 
-async function saveScanTimeViaApi(from, to) {
+// type: 'scan' (Scan Time Window, default) | 'day' (Day Duty) | 'night' (Night Duty)
+async function saveScanTimeViaApi(from, to, type = 'scan') {
   const res = await apiFetch('/api/scan-settings', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from, to }),
+    body: JSON.stringify({ from, to, type }),
   });
-  return readJsonResponse(res); // { from, to }
+  return readJsonResponse(res); // same shape as fetchScanTimeViaApi()
 }
 
 /**

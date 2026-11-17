@@ -996,7 +996,20 @@ tr:last-child td { border-bottom: none; }
   text-align: center;
   font-size: 12px;
   color: var(--ink-500);
-  margin-top: 8px;
+  /* stays pinned at the top of the scrolling list so there is always a
+     visible place to drop the next main place */
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--navy-900);
+}
+.assign-section-title {
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-300);
 }
 
 /* Small search box above a draggable list (Main Places / Guards columns) */
@@ -1322,8 +1335,17 @@ tr:last-child td { border-bottom: none; }
   color: var(--ink-300);
   line-height: 1.4;
   margin-bottom: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.dash-sub { font-size: 11.5px; color: var(--ink-500); }
+.dash-sub {
+  font-size: 11.5px;
+  color: var(--ink-500);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .dash-sub .ok { color: var(--success); font-weight: 700; }
 .dash-icon {
   width: 30px; height: 30px; flex: none;
@@ -1438,6 +1460,23 @@ body.has-topbar .topbar .who { display: none; }
   cursor: pointer;
 }
 .theme-toggle:hover { border-color: var(--amber); color: var(--amber); }
+
+/* Day Duty / Night Duty switch (Home top bar, left of the Light/Dark button) */
+.duty-switch {
+  display: inline-flex; padding: 3px; gap: 2px;
+  background: var(--navy-800);
+  border: 1px solid var(--navy-line);
+  border-radius: 10px;
+}
+.duty-switch-btn {
+  background: transparent; border: 0; color: var(--ink-300);
+  border-radius: 7px; padding: 6px 12px;
+  font: inherit; font-size: 12.5px; font-weight: 600;
+  cursor: pointer; white-space: nowrap;
+}
+.duty-switch-btn:hover { color: var(--amber); }
+.duty-switch-btn.active { background: var(--amber); color: #1a1205; }
+@media (max-width: 520px) { .duty-switch-btn { padding: 6px 8px; font-size: 11.5px; } }
 @media (max-width: 520px) { .theme-toggle .theme-toggle-text { display: none; } }
 
 /* ---------- Admin: logo + title sit in the topbar, on one line with the buttons ---------- */

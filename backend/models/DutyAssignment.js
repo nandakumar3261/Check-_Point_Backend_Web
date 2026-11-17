@@ -16,6 +16,9 @@ const DutyAssignmentSchema = new Schema(
     dutyPlaceId: { type: Schema.Types.ObjectId, ref: 'DutyPlace' },
     mainPlace: { type: String, required: true, trim: true },
     subPlaces: { type: [String], required: true },
+    // Day Duty = one date; Night Duty = two dates (start day + next day).
+    // Older records saved before this field existed have no dutyType.
+    dutyType: { type: String, enum: ['Day Duty', 'Night Duty'] },
     dutyDate: { type: Date, required: true }, // the day the (overnight) shift starts
     dateRange: { type: String, required: true }, // display form, e.g. "10-01-2024_11-01-2024"
     assignedBy: { type: String, default: 'admin' },
