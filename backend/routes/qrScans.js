@@ -291,24 +291,59 @@ router.get('/coverage', ownGuardOrAdmin, async (req, res) => {
   }
 });
 
-// POST /api/qr-scans  { guardEmpId, scannedSubPlace }
+// The scan window that applies to a duty type: that type's own window (set
+// from "Set Scan Time" -> Day / Night) or, when it has none, the original
+// general window. null = no window saved at all (scanning stays open).
+async function windowFor(dutyType) {
+  const own = await ScanSetting.findOne({ dutyType });
+  if (own && own.from && own.to) return own;
+  return ScanSetting.findOne({ dutyType: { $exists: false } });
+}
+
+// [start, end) UTC bounds of the IST calendar day `offsetDays` from today.
+// Duty dates are stored as UTC midnight of the "YYYY-MM-DD" the admin picked,
+// so an IST day maps onto them exactly.
+function istDayBounds(offsetDays) {
+  const ist = new Date(Date.now() + IST_OFFSET_MINUTES * 60000);
+  const start = new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate() + offsetDays));
+  const end = new Date(start);
+  end.setUTCDate(end.getUTCDate() + 1);
+  return { start, end };
+}
+
+// POST /api/qr-scans  { guardEmpId, scannedSubPlace, dutyType?, latitude?, longitude? }
 // The mobile app's Scan QR Code screen calls this once someone taps Submit
 // on a scanned code. Nothing is trusted from the client beyond *who* is
-// scanning and *what text* their camera read - guardName, mainPlace and
-// dateRange are all pulled from that person's own DutyAssignment for today,
-// and the scan is rejected outright unless the scanned text exactly matches
-// one of that assignment's sub places. This is the "only store it if that
-// sub place is actually assigned to this user today" rule.
+// scanning and *what text* their camera read - guardName, mainPlace,
+// dutyType and dateRange are all pulled from that person's own
+// DutyAssignment, and the scan is rejected outright unless the scanned text
+// exactly matches one of that assignment's sub places.
+//
+// dutyType ("Day Duty" | "Night Duty") is optional: the app sends the tab the
+// guard is on, so a guard holding both a Day and a Night duty is scanned
+// against the right one. Without it (older app versions) any of the guard's
+// current duties that contains the scanned sub place is used.
+//
+// Which duty is "current":
+//   Day Duty   - the one dated today (IST).
+//   Night Duty - an overnight shift is dated the day it STARTS, so after
+//                midnight (while the Night window is still running) it is
+//                yesterday's duty; otherwise it is today's.
+// The scan time window checked is that duty type's own window.
 router.post('/', ownGuardOrAdmin, async (req, res) => {
   try {
     const guardEmpId = String(req.body.guardEmpId || '').trim();
     const scannedSubPlace = String(req.body.scannedSubPlace || '').trim();
+    const wantedType = typeof req.body.dutyType === 'string' ? req.body.dutyType.trim() : '';
 
     if (!guardEmpId) {
       return res.status(400).json({ error: 'guardEmpId is required.' });
     }
     if (!scannedSubPlace) {
       return res.status(400).json({ error: 'No QR data to submit.' });
+    }
+    if (wantedType && wantedType !== 'Day Duty' && wantedType !== 'Night Duty') {
+      return res.status(400).json({ error: 'dutyType must be "Day Duty" or "Night Duty".' });
     }
 
     // Optional device GPS coordinates from the phone (OpenStreetMap-style -
@@ -326,30 +361,49 @@ router.post('/', ownGuardOrAdmin, async (req, res) => {
       }
     }
 
-    const scanSetting = await ScanSetting.findOne({ dutyType: { $exists: false } });
-    if (!isWithinScanWindow(scanSetting)) {
-      return res.status(400).json({
-        error: `Scanning is only accepted between ${formatHHmm(scanSetting.from)} and ${formatHHmm(scanSetting.to)}.`,
+    const today = istDayBounds(0);
+    const yesterday = istDayBounds(-1);
+    const nowIst = new Date(Date.now() + IST_OFFSET_MINUTES * 60000);
+    const nowMin = nowIst.getUTCHours() * 60 + nowIst.getUTCMinutes();
+
+    // Is the overnight Night shift that started yesterday still running?
+    // (With no Night window saved, the first 5:30 hours after midnight count.)
+    const nightWindow = await windowFor('Night Duty');
+    const nightFromYesterday = nightWindow && nightWindow.from && nightWindow.to
+      ? minutesOf(nightWindow.from) > minutesOf(nightWindow.to) && nowMin < minutesOf(nightWindow.to)
+      : nowMin < 330;
+
+    const candidates = await DutyAssignment.find({
+      guardEmpId,
+      dutyDate: { $gte: yesterday.start, $lt: today.end },
+    });
+    const current = candidates.filter((d) => {
+      const type = d.dutyType || 'Night Duty'; // old duties without a type are Night
+      if (wantedType && type !== wantedType) return false;
+      const startedToday = d.dutyDate >= today.start;
+      if (type === 'Day Duty') return startedToday;
+      return nightFromYesterday ? !startedToday : startedToday;
+    });
+
+    const assignment = current.find((d) => d.subPlaces.some((s) => s === scannedSubPlace)) || current[0];
+    if (!assignment) {
+      return res.status(404).json({
+        error: wantedType ? `You have no ${wantedType} assigned for today.` : 'You have no duty assigned for today.',
       });
     }
+    const dutyType = assignment.dutyType || 'Night Duty';
 
-    const { start, end } = todayBoundsUTC();
-    // A guard can have both a Day duty and a Night duty on the same date, so
-    // use the one whose sub places include the scanned code.
-    const todays = await DutyAssignment.find({
-      guardEmpId,
-      dutyDate: { $gte: start, $lt: end },
-    });
-    const assignment = todays.find((d) => d.subPlaces.some((s) => s === scannedSubPlace)) || todays[0];
-
-    if (!assignment) {
-      return res.status(404).json({ error: 'You have no duty assigned for today.' });
+    const scanSetting = await windowFor(dutyType);
+    if (!isWithinScanWindow(scanSetting)) {
+      return res.status(400).json({
+        error: `${dutyType} scanning is only accepted between ${formatHHmm(scanSetting.from)} and ${formatHHmm(scanSetting.to)}.`,
+      });
     }
 
     const isAssigned = assignment.subPlaces.some((s) => s === scannedSubPlace);
     if (!isAssigned) {
       return res.status(400).json({
-        error: `"${scannedSubPlace}" is not part of your assigned duty today (${assignment.mainPlace}).`,
+        error: `"${scannedSubPlace}" is not part of your assigned ${dutyType} (${assignment.mainPlace}).`,
       });
     }
 
@@ -359,6 +413,7 @@ router.post('/', ownGuardOrAdmin, async (req, res) => {
       guardName: assignment.guardName,
       mainPlace: assignment.mainPlace,
       scannedSubPlace,
+      dutyType,
       dateRange: assignment.dateRange,
       scannedAt: new Date(),
       // Only set when the phone sent a valid fix (see above).

@@ -20,6 +20,10 @@ const QrScanSchema = new Schema(
     guardName: { type: String, required: true, trim: true },
     mainPlace: { type: String, required: true, trim: true },
     scannedSubPlace: { type: String, required: true, trim: true },
+    // Which duty the scan was made on (copied from the assignment, not the
+    // client). Scans saved before this field existed have none - their
+    // assignment's dutyType still tells which duty they belong to.
+    dutyType: { type: String, enum: ['Day Duty', 'Night Duty'] },
     dateRange: { type: String, required: true },
     scannedAt: { type: Date, required: true, default: Date.now },
     // Device GPS coordinates captured on the phone at the moment of
