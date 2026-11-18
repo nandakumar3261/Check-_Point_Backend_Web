@@ -177,11 +177,15 @@
 .assign-item { transition: transform 0.2s var(--ease-out), border-color 0.2s ease, background-color 0.2s ease, opacity 0.2s ease; }
 .assign-item:hover { transform: translateX(3px); }
 .assign-dropzone { transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s var(--ease-out); }
-.assign-dropzone.drag-over, .duty-mini-card .mini-guard-slot.drag-over { transform: scale(1.015); }
-.duty-mini-card { animation: anim-pop 0.45s var(--ease-out) both; }
+/* No scaling while dragging: resizing the drop target under the pointer can make
+   the browser miss the drop. Highlight with the border colour only (style.css). */
+/* The whole column is re-rendered on every change, so only the card that was
+   just added animates - replaying it on every card made targets move mid-drag. */
+.duty-mini-card { animation: none; }
+.duty-mini-card.just-added { animation: anim-fade-in 0.3s ease both; } /* fade only - no movement, so the drop target never shifts */
 .duty-mini-card .remove-btn { transition: transform 0.2s var(--ease-spring), background-color 0.2s ease, color 0.2s ease; }
 .duty-mini-card .remove-btn:hover { transform: rotate(90deg) scale(1.1); }
-.duty-mini-card .mini-guard-slot.filled { animation: anim-pop 0.35s var(--ease-spring) both; }
+.duty-mini-card.just-added .mini-guard-slot.filled { animation: none; }
 
 /* ---------- Modals ---------- */
 .modal-overlay { animation: anim-fade-in 0.25s ease both; }

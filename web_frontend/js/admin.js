@@ -581,13 +581,13 @@ const renderers = {
         <div class="card assign-col">
           <div class="card-title">Main Places</div>
           <input type="text" id="assignPlacesSearch" class="mini-search" placeholder="Search main places..." />
-          <div class="assign-hint">Drag a place into the Duty Assignments column</div>
+          <div class="assign-hint">Drag a place into the Duty Assignments column (or click it)</div>
           <div id="assignPlacesList" class="assign-list"><p style="color:var(--ink-500); font-size:13px;">Loading...</p></div>
         </div>
         <div class="card assign-col">
           <div class="card-title">Guards</div>
           <input type="text" id="assignGuardsSearch" class="mini-search" placeholder="Search guards..." />
-          <div class="assign-hint">Drag a guard onto a duty card to assign it</div>
+          <div class="assign-hint">Drag a guard onto a duty card (or click to fill the next empty card)</div>
           <div id="assignGuardsList" class="assign-list"><p style="color:var(--ink-500); font-size:13px;">Loading...</p></div>
         </div>
         <div class="card assign-col">
@@ -2792,6 +2792,7 @@ function attachHandlers(section) {
     let existingDutiesForDate = []; // ...only the ones of the selected duty type - Day and Night are kept separate
     let pendingDuties = []; // { clientId, dutyPlaceId, mainPlace, subPlaces, guardId, guardEmpId, guardName } - new, not yet submitted
     let clientIdCounter = 0;
+    var lastAddedClientId = null;
     let placesFilter = '';
     let guardsFilter = '';
 
@@ -2872,7 +2873,7 @@ function attachHandlers(section) {
       box.innerHTML = filtered.map((p, i) => {
         const isUsed = used.has(p.mainPlace.toLowerCase());
         return `
-          <div class="assign-item${isUsed ? ' used' : ''}" draggable="${isUsed ? 'false' : 'true'}" data-place-id="${p._id}">
+          <div class="assign-item${isUsed ? ' used' : ''}" draggable="${isUsed ? 'false' : 'true'}" data-place-id="${p._id}" title="${isUsed ? 'Already assigned' : 'Drag into Duty Assignments, or click to add'}">
             <span class="idx">${i + 1}.</span> <span class="preserve-space">${escapeHtml(p.mainPlace)}</span>
             ${isUsed ? '<span style="margin-left:auto; font-size:10.5px; color:var(--ink-500);">assigned</span>' : ''}
           </div>`;
@@ -2897,7 +2898,7 @@ function attachHandlers(section) {
       box.innerHTML = filtered.map((g, i) => {
         const isUsed = used.has(g.roll_no);
         return `
-          <div class="assign-item${isUsed ? ' used' : ''}" draggable="${isUsed ? 'false' : 'true'}" data-guard-id="${g._id}">
+          <div class="assign-item${isUsed ? ' used' : ''}" draggable="${isUsed ? 'false' : 'true'}" data-guard-id="${g._id}" title="${isUsed ? 'Already assigned' : 'Drag onto a duty card, or click to assign to the next empty card'}">
             <span class="idx">${i + 1}.</span> ${escapeHtml(g.first_name)} <span style="color:var(--ink-500);">(${escapeHtml(g.roll_no)})</span>
             ${isUsed ? '<span style="margin-left:auto; font-size:10.5px; color:var(--ink-500);">assigned</span>' : ''}
           </div>`;
@@ -2918,7 +2919,7 @@ function attachHandlers(section) {
         </div>`).join('');
 
       const pendingHtml = pendingDuties.map((d, i) => `
-        <div class="duty-mini-card" data-client-id="${d.clientId}">
+        <div class="duty-mini-card${d.clientId === lastAddedClientId ? ' just-added' : ''}" data-client-id="${d.clientId}">
           <button type="button" class="remove-btn" data-client-id="${d.clientId}" title="Remove this duty">✕</button>
           <div class="existing-badge new-badge"><span class="duty-no">${i + 1}</span>New</div>
           <div class="mini-place preserve-space">${escapeHtml(d.mainPlace)}</div>
@@ -2936,6 +2937,7 @@ function attachHandlers(section) {
         : '';
 
       box.innerHTML = hintHtml + pendingHtml + existingSection;
+      lastAddedClientId = null; // the pop-in animation plays once, for the newest card only
       // the batch changed - any earlier preview is now stale
       document.getElementById('assignPreviewWrap').innerHTML = '';
     }
@@ -3047,6 +3049,45 @@ function attachHandlers(section) {
     const guardsList = document.getElementById('assignGuardsList');
     const dropZone = document.getElementById('assignDropZone');
 
+    // Adds a main place to the batch as a new duty card (used by drag-drop AND click).
+    function addPlaceToBatch(placeId) {
+      if (!currentDutyType()) { alert('Select a duty type first.'); return; }
+      const place = placesData.find(p => p._id === placeId);
+      if (!place) return;
+      if (usedMainPlaceKeys().has(place.mainPlace.toLowerCase())) {
+        alert(`${place.mainPlace} already has a duty for this date.`);
+        return;
+      }
+      const clientId = 'd' + (++clientIdCounter);
+      pendingDuties.push({
+        clientId,
+        dutyPlaceId: place._id,
+        mainPlace: place.mainPlace,
+        subPlaces: place.subPlaces.map(s => s.name),
+        guardId: null,
+        guardEmpId: null,
+        guardName: null,
+      });
+      lastAddedClientId = clientId;
+      renderDropZone();
+      renderPlacesList();
+    }
+
+    // Click works as well as drag (touch screens and browsers where drag-drop
+    // misbehaves): click a main place to add it, click a guard to put it on
+    // the first duty card that still has no guard.
+    placesList.addEventListener('click', (e) => {
+      const item = e.target.closest('.assign-item[data-place-id]');
+      if (!item || item.classList.contains('used')) return;
+      addPlaceToBatch(item.dataset.placeId);
+    });
+    guardsList.addEventListener('click', (e) => {
+      const item = e.target.closest('.assign-item[data-guard-id]');
+      if (!item || item.classList.contains('used')) return;
+      if (!currentDutyType()) { alert('Select a duty type first.'); return; }
+      assignGuardToFirstEmpty(item.dataset.guardId);
+    });
+
     placesList.addEventListener('dragstart', (e) => {
       const item = e.target.closest('.assign-item[data-place-id]');
       if (!item || item.classList.contains('used')) { e.preventDefault(); return; }
@@ -3081,23 +3122,7 @@ function attachHandlers(section) {
       try { payload = JSON.parse(e.dataTransfer.getData('text/plain')); } catch (err) { return; }
 
       if (payload.type === 'place') {
-        const place = placesData.find(p => p._id === payload.id);
-        if (!place) return;
-        if (usedMainPlaceKeys().has(place.mainPlace.toLowerCase())) {
-          alert(`${place.mainPlace} already has a duty for this date.`);
-          return;
-        }
-        pendingDuties.push({
-          clientId: 'd' + (++clientIdCounter),
-          dutyPlaceId: place._id,
-          mainPlace: place.mainPlace,
-          subPlaces: place.subPlaces.map(s => s.name),
-          guardId: null,
-          guardEmpId: null,
-          guardName: null,
-        });
-        renderDropZone();
-        renderPlacesList();
+        addPlaceToBatch(payload.id);
         return;
       }
 
