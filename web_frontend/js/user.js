@@ -543,6 +543,34 @@ function attachAccountHandlers() {
   });
 }
 
+// Saves a jsPDF document. doc.save() can silently do nothing in some
+// browsers / in-app webviews, so fall back to a manual blob download, and
+// finally to opening the PDF in a new tab.
+function savePdfSafely(doc, fileName) {
+  try {
+    doc.save(fileName);
+    return;
+  } catch (e) { /* fall through to manual download */ }
+  try {
+    const blob = doc.output('blob');
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  } catch (e) {
+    window.open(doc.output('bloburl'), '_blank');
+  }
+}
+
+function pdfLibsReady() {
+  if (typeof jspdf === 'undefined' || !jspdf.jsPDF) return false;
+  return typeof jspdf.jsPDF.API.autoTable === 'function';
+}
+
 function attachHandlers(section) {
   if (section === 'contact') {
     loadContactUs();
@@ -580,11 +608,12 @@ function attachHandlers(section) {
       prevBtn.addEventListener('click', () => { dutyPage -= 1; paint('home'); });
       nextBtn.addEventListener('click', () => { dutyPage += 1; paint('home'); });
 
-pdfBtn.addEventListener('click', () => {
-        if (typeof jspdf === 'undefined' || !jspdf.jsPDF) {
+pdfBtn.addEventListener('click', async () => {
+        if (!pdfLibsReady()) {
           alert('The PDF export library did not load. Check your internet connection and try again.');
           return;
         }
+        try {
         const all = combinedDuties();
         const STATUS_LABEL = { today: 'Today', upcoming: 'Upcoming', completed: 'Completed' };
 
@@ -638,14 +667,23 @@ pdfBtn.addEventListener('click', () => {
           { content: '', styles: { minCellHeight: layouts[i].length * LINE_HEIGHT + CELL_TOP_PAD } },
         ]);
 
-        doc.setFontSize(14);
-        doc.text(`My Duties - ${user.first_name} (${user.roll_no})`, 14, 15);
-        doc.setFontSize(10);
-        doc.text(`${all.length} duty assignment${all.length === 1 ? '' : 's'}`, 14, 21);
+        const logo = await loadPdfLogoDataUrl();
+        const allSubs = all.flatMap(d => d.subPlaces || []);
+        const scannedCount = allSubs.filter(sp => sp.scanned).length;
+        const startY = drawPdfReportHeader(doc, {
+          title: 'My Duties Report',
+          logo,
+          details: [
+            [['Guard', `${user.first_name} (${user.roll_no})`], ['Designation', user.designation || '-'], ['Generated On', new Date().toLocaleString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })], ['Total Duties', String(all.length)]],
+            [['Total Sub Places', String(allSubs.length)], ['Scanned', String(scannedCount)], ['Not Scanned', String(allSubs.length - scannedCount)]],
+          ],
+        });
         doc.setFontSize(8);
 
         doc.autoTable({
-          startY: 26,
+          startY,
+          margin: { left: 14, right: 14, bottom: 14 },
+          didDrawPage: (data) => drawPdfPageNumber(doc, data.pageNumber),
           theme: 'grid',
           head: [['#', 'Duty Date Range', 'Duty Type', 'Status', 'Main Place', 'Sub Places (tick = scanned)']],
           body,
@@ -679,7 +717,11 @@ pdfBtn.addEventListener('click', () => {
             });
           },
         });
-        doc.save(`my_duties_${user.roll_no}.pdf`);
+        savePdfSafely(doc, `my_duties_${user.roll_no}.pdf`);
+        } catch (err) {
+          console.error('Duties PDF failed:', err);
+          alert('Could not create the PDF: ' + (err && err.message ? err.message : err));
+        }
       });
     }
   }
