@@ -406,7 +406,9 @@ const renderers = {
           <p style="color:var(--ink-500); font-size:12.5px; margin-bottom:4px;">
             Columns: <code>roll_no, password, first_name, gender, designation, mobile, role</code> — role must be
             <code>admin</code> or <code>security</code>; gender must be <code>Male</code>, <code>Female</code> or
-            <code>Other</code> (may be left blank). First row must be the header row.
+            <code>Other</code> (capital first letter; may be left blank); mobile must be 10 digits starting with 6-9;
+            password needs 7+ characters with an uppercase letter, a number and a special character.
+            First row must be the header row.
           </p>
           <div class="bulk-upload-box">
             <div class="row">
@@ -1853,12 +1855,34 @@ function attachHandlers(section) {
             statusBox.textContent = 'No data rows found in that file.';
             return;
           }
-          statusBox.textContent = `Uploading ${rows.length} row(s)...`;
-          const result = await bulkAddUsersViaApi(rows);
-          statusBox.innerHTML = `<span class="badge badge-success">${result.insertedCount} added</span> &nbsp; <span class="badge ${result.skippedCount ? 'badge-danger' : 'badge-amber'}">${result.skippedCount} skipped</span>`;
-          const skipped = result.results.filter(r => r.status === 'skipped');
+          // Check every row in the browser first (password, gender, mobile, role).
+          // Bad rows are reported and left out; only valid rows are sent. The
+          // server checks them again. `line` is the row's line number in the CSV
+          // (header = line 1) so the messages point at the right row.
+          const rejected = [];
+          const valid = [];
+          rows.forEach((r, idx) => {
+            const problems = validateBulkCsvRow(r);
+            if (problems.length) rejected.push({ row: idx + 2, roll_no: r.roll_no, reason: problems.join(' ') });
+            else valid.push({ line: idx + 2, data: r });
+          });
+
+          statusBox.textContent = `Uploading ${valid.length} valid row(s)...`;
+          let insertedCount = 0;
+          const skipped = rejected.slice();
+          if (valid.length) {
+            const result = await bulkAddUsersViaApi(valid.map(v => v.data));
+            insertedCount = result.insertedCount;
+            result.results.filter(r => r.status === 'skipped').forEach(r => {
+              // server row numbers count the rows we sent; map back to CSV lines
+              const sent = valid[r.row - 2];
+              skipped.push({ row: sent ? sent.line : r.row, roll_no: r.roll_no, reason: r.reason });
+            });
+          }
+          skipped.sort((a, b) => a.row - b.row);
+          statusBox.innerHTML = `<span class="badge badge-success">${insertedCount} added</span> &nbsp; <span class="badge ${skipped.length ? 'badge-danger' : 'badge-amber'}">${skipped.length} skipped</span>`;
           resultList.innerHTML = skipped.length
-            ? skipped.map(r => `<div class="row-item"><span>Row ${r.row} (${r.roll_no || '—'})</span><span style="color:var(--danger);">${escapeHtml(r.reason)}</span></div>`).join('')
+            ? skipped.map(r => `<div class="row-item"><span>Row ${r.row} (${escapeHtml(r.roll_no || '—')})</span><span style="color:var(--danger);">${escapeHtml(r.reason)}</span></div>`).join('')
             : '<div style="color:var(--ink-500); padding:6px 0;">No rows skipped.</div>';
         } catch (err) {
           statusBox.innerHTML = `<span style="color:var(--danger);">${escapeHtml(err.message)}</span>`;

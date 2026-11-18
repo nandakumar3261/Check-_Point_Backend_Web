@@ -120,13 +120,18 @@ const dutyState = { loaded: false, error: null, data: [] };
 // The QR-scan window shown in the Home "Reminder". It is the global setting
 // the admin saves under Assign Duty -> Set Scan Time (GET /api/scan-settings),
 // so the reminder always matches what the server actually enforces.
-const scanState = { loaded: false, error: null, from: null, to: null };
+const scanState = { loaded: false, error: null, from: null, to: null, day: null, night: null };
 
 async function loadScanWindow() {
   try {
     const res = await fetchScanTimeViaApi(); // { from, to } - 24h "HH:mm", both null if never saved
     scanState.from = res.from || null;
     scanState.to = res.to || null;
+    // Set Scan Time can also save a Day Duty and a Night Duty window
+    // (res.day / res.night, each { from, to } with nulls if never saved).
+    const win = (w) => (w && w.from && w.to ? { from: w.from, to: w.to } : null);
+    scanState.day = win(res.day);
+    scanState.night = win(res.night);
     scanState.error = null;
     scanState.loaded = true;
   } catch (err) {
@@ -144,16 +149,61 @@ function formatTime12(hhmm) {
   return `${h}:${m[2]} ${amPm}`;
 }
 
+// "DD-MM-YYYY" for today in the browser's local time.
+function todayDDMMYYYY() {
+  const d = new Date();
+  return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
+}
+
+// Which duty types this guard is on today: 'Day Duty' and/or 'Night Duty'.
+// A duty counts when the server marks it today. A Night Duty also counts on
+// the morning of its second date (its range "18-11-2026_19-11-2026" runs past
+// midnight), so a guard still on shift after midnight keeps seeing the time.
+function dutyTypesToday() {
+  const types = new Set();
+  const today = todayDDMMYYYY();
+  (dutyState.data || []).forEach((d) => {
+    const type = d.dutyType || 'Night Duty';
+    if (d.status === 'today') types.add(type);
+    else if (type === 'Night Duty' && String(d.dateRange || '').split('_')[1] === today) types.add(type);
+  });
+  return types;
+}
+
 function reminderText() {
   if (!scanState.loaded) {
     return scanState.error
       ? `<span style="color:var(--danger);">Couldn't load the scan time: ${esc(scanState.error)}</span>`
       : 'Loading scan time…';
   }
-  if (!scanState.from || !scanState.to) {
-    return 'The admin has not set a QR scan time yet.';
+  const range = (w) => `<strong>${esc(formatTime12(w.from))}</strong> and <strong>${esc(formatTime12(w.to))}</strong>`;
+  const general = scanState.from && scanState.to ? { from: scanState.from, to: scanState.to } : null;
+  const windowFor = (type) => (type === 'Day Duty' ? scanState.day : scanState.night) || general;
+
+  // Duties still loading: wait, so the card doesn't flash the wrong times.
+  // If they failed to load there is no way to know today's duty, so show every
+  // time the admin has set instead of hiding them.
+  let types;
+  if (dutyState.loaded) {
+    types = dutyTypesToday();
+  } else if (dutyState.error) {
+    types = new Set(['Day Duty', 'Night Duty']);
+  } else {
+    return 'Loading scan time…';
   }
-  return `QR scanning is only accepted between <strong>${esc(formatTime12(scanState.from))}</strong> and <strong>${esc(formatTime12(scanState.to))}</strong>. Scans outside this window will be rejected.`;
+
+  // Only show the time for the duty type(s) this guard actually has today.
+  if (types.size === 0) return 'You have no duty today.';
+
+  const lines = ['Day Duty', 'Night Duty']
+    .filter((type) => types.has(type))
+    .map((type) => {
+      const w = windowFor(type);
+      return w
+        ? `${type}: scan between ${range(w)}`
+        : `${type}: the admin has not set a QR scan time yet.`;
+    });
+  return lines.join('<br>');
 }
 let dutyLoadSeq = 0; // ignore out-of-order responses if the guard clicks around quickly
 
@@ -274,7 +324,7 @@ function dutyPageSlice() {
   return { all, total, totalPages, start, pageItems: all.slice(start, start + dutyPageSize) };
 }
 
-// One row per duty: #, Duty Date Range, Status, Main Place, Sub Places.
+// One row per duty: #, Duty Date Range, Duty Type, Status, Main Place, Sub Places.
 // A scanned sub place gets a green tick, an unscanned one a red cross - so a
 // guard can tell at a glance which sub places on a duty they still need to
 // visit.
@@ -290,6 +340,7 @@ function dutyRow(d, serial) {
     <tr>
       <td class="serial-col">${serial}</td>
       <td style="white-space:nowrap;">${esc(prettyRange(d.dateRange))}</td>
+      <td style="white-space:nowrap;">${esc(d.dutyType || 'Night Duty')}</td>
       <td>${STATUS_BADGE[d.status] || ''}</td>
       <td class="preserve-space">${esc(d.mainPlace)}</td>
       <td>${(d.subPlaces || []).map(subPlaceChip).join('')}</td>
@@ -320,7 +371,7 @@ function dutySection() {
       </div>
       <div class="table-scroll duty-table">
         <table>
-          <thead><tr><th class="serial-col">#</th><th>Duty Date Range</th><th>Status</th><th>Main Place</th><th>Sub Places</th></tr></thead>
+          <thead><tr><th class="serial-col">#</th><th>Duty Date Range</th><th>Duty Type</th><th>Status</th><th>Main Place</th><th>Sub Places</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
@@ -544,7 +595,7 @@ pdfBtn.addEventListener('click', () => {
         // glyphs and silently corrupts them if printed as text, so the icons
         // are vector lines, not characters, which is why this needs manual
         // layout instead of a plain autoTable text cell.
-        const ICON_COLUMN = 4;
+        const ICON_COLUMN = 5;
         const LINE_HEIGHT = 4.6; // mm per wrapped line
         const CELL_TOP_PAD = 2.4; // mm, matches autoTable's own cell padding
         const CELL_SIDE_PAD = 2; // mm
@@ -581,6 +632,7 @@ pdfBtn.addEventListener('click', () => {
         const body = all.map((d, i) => [
           String(i + 1),
           prettyRange(d.dateRange).replace(' \u2192 ', ' to '),
+          d.dutyType || 'Night Duty',
           STATUS_LABEL[d.status] || d.status,
           d.mainPlace,
           { content: '', styles: { minCellHeight: layouts[i].length * LINE_HEIGHT + CELL_TOP_PAD } },
@@ -595,7 +647,7 @@ pdfBtn.addEventListener('click', () => {
         doc.autoTable({
           startY: 26,
           theme: 'grid',
-          head: [['#', 'Duty Date Range', 'Status', 'Main Place', 'Sub Places (tick = scanned)']],
+          head: [['#', 'Duty Date Range', 'Duty Type', 'Status', 'Main Place', 'Sub Places (tick = scanned)']],
           body,
           styles: { fontSize: 8, lineWidth: 0.1, lineColor: [38, 56, 90] },
           headStyles: { fillColor: [18, 33, 58] },
@@ -687,7 +739,7 @@ pdfBtn.addEventListener('click', () => {
       return `<a class="scan-chip geo-chip" href="${url}" target="_blank" rel="noopener noreferrer" title="Open this location on the map">${ICON_PIN}${formatCoord(sc.latitude)}, ${formatCoord(sc.longitude)}</a>`;
     }
 
-    // One serial number per duty (Main Place + Duty Date Range, merged cells),
+    // One serial number per duty (Main Place + Duty Date Range + Duty Type, merged cells),
     // with EVERY sub place assigned to the guard numbered underneath, each
     // marked Scanned / Not scanned and every scan time stacked in its Scanned
     // At cell. Shared by the on-screen table and the PDF.
@@ -720,7 +772,8 @@ pdfBtn.addEventListener('click', () => {
         const merged = r.first
           ? `<td class="serial-col grp-first" rowspan="${r.span}" style="vertical-align:top;">${r.groupIndex}</td>
              <td class="preserve-space" rowspan="${r.span}" style="vertical-align:top;">${esc(r.group.mainPlace)}</td>
-             <td rowspan="${r.span}" style="vertical-align:top; white-space:nowrap;">${esc(prettyRange(r.group.dateRange))}</td>`
+             <td rowspan="${r.span}" style="vertical-align:top; white-space:nowrap;">${esc(prettyRange(r.group.dateRange))}</td>
+             <td rowspan="${r.span}" style="vertical-align:top; white-space:nowrap;">${esc(r.group.dutyType || 'Night Duty')}</td>`
           : '';
         return `<tr${zebra}>${merged}
           <td class="serial-col">${r.subIndex}</td>
@@ -732,13 +785,13 @@ pdfBtn.addEventListener('click', () => {
       }).join('');
 
       return `
-        <table class="recent-scans-table" style="min-width:1290px;">
+        <table class="recent-scans-table" style="min-width:1420px;">
           <colgroup>
-            <col style="width:56px;"><col style="width:190px;"><col style="width:190px;">
+            <col style="width:56px;"><col style="width:190px;"><col style="width:190px;"><col style="width:130px;">
             <col style="width:64px;"><col style="width:220px;"><col style="width:150px;"><col style="width:220px;"><col style="width:200px;">
           </colgroup>
           <thead><tr>
-            <th class="serial-col">#</th><th>Main Place</th><th>Duty Date Range</th>
+            <th class="serial-col">#</th><th>Main Place</th><th>Duty Date Range</th><th>Duty Type</th>
             <th class="serial-col">Sub #</th><th>Sub Place</th><th class="status-col">Status</th><th>Scanned At (Timeline)</th><th>Geo-Coordinates</th>
           </tr></thead>
           <tbody>${body}</tbody>
@@ -810,7 +863,7 @@ pdfBtn.addEventListener('click', () => {
       dateTimer = setTimeout(loadLogs, 200);
     });
     // ---------- Download PDF: mirrors the on-screen table (merged cells) ----------
-    pdfBtn.addEventListener('click', () => {
+    pdfBtn.addEventListener('click', async () => {
       if (!loaded.duties.length) {
         alert('Nothing to export.');
         return;
@@ -828,6 +881,7 @@ pdfBtn.addEventListener('click', () => {
           row.push({ content: r.group.mainPlace, rowSpan: r.span, styles: { valign: 'top' } });
           // Plain "to" - the PDF's built-in font has no arrow glyph.
           row.push({ content: String(r.group.dateRange || '').replace('_', ' to '), rowSpan: r.span, styles: { valign: 'top' } });
+          row.push({ content: r.group.dutyType || 'Night Duty', rowSpan: r.span, styles: { valign: 'top' } });
         }
         row.push(String(r.subIndex));
         row.push(r.sub.name);
@@ -838,22 +892,29 @@ pdfBtn.addEventListener('click', () => {
         return row;
       });
 
-      const scope = loaded.byDate ? `Duty date ${prettyDateStr(loaded.date)}` : 'All dates';
-      const doc = new jspdf.jsPDF({ orientation: 'landscape' });
-      doc.setFontSize(14);
-      doc.text(`Logs/Data - ${user.first_name} (${user.roll_no})`, 14, 15);
-      doc.setFontSize(10);
+      const doc = new jspdf.jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const logo = await loadPdfLogoDataUrl();
       const pdfSubs = loaded.duties.flatMap(d => d.subPlaces || []);
-      doc.text(`${scope}  |  ${pdfSubs.filter(sp => sp.scanned).length} of ${pdfSubs.length} sub places scanned`, 14, 21);
+      const scannedSubs = pdfSubs.filter(sp => sp.scanned).length;
+      const startY = drawPdfReportHeader(doc, {
+        title: 'Logs/Data Report',
+        logo,
+        details: [
+          [['Guard', `${user.first_name} (${user.roll_no})`], ['Duty Date', loaded.byDate ? prettyDateStr(loaded.date) : 'All dates'], ['Generated On', fmtDateTime(new Date().toISOString())], ['Designation', user.designation || '—']],
+          [['Total Duties', String(loaded.duties.length)], ['Total Sub Places', String(pdfSubs.length)], ['Scanned', String(scannedSubs)], ['Not Scanned', String(pdfSubs.length - scannedSubs)]],
+        ],
+      });
       doc.autoTable({
-        startY: 26,
+        startY,
+        margin: { left: 14, right: 14, bottom: 14 },
+        didDrawPage: (data) => drawPdfPageNumber(doc, data.pageNumber),
         theme: 'grid',
-        head: [['#', 'Main Place', 'Duty Date Range', 'Sub #', 'Sub Place', 'Status', 'Scanned At (Timeline)', 'Geo-Coordinates']],
+        head: [['#', 'Main Place', 'Duty Date Range', 'Duty Type', 'Sub #', 'Sub Place', 'Status', 'Scanned At (Timeline)', 'Geo-Coordinates']],
         body,
         styles: { fontSize: 8, lineWidth: 0.1, lineColor: [38, 56, 90] },
         headStyles: { fillColor: [18, 33, 58] },
         // keep the time and coordinates on one line each (no wrapping mid-value)
-        columnStyles: { 6: { cellWidth: 'wrap' }, 7: { cellWidth: 'wrap' } },
+        columnStyles: { 7: { cellWidth: 'wrap' }, 8: { cellWidth: 'wrap' } },
       });
       doc.save(`logs_${user.roll_no}_${loaded.byDate ? loaded.date : 'all'}.pdf`);
     });

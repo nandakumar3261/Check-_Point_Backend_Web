@@ -71,3 +71,42 @@ function downloadCsvTemplate() {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+
+/**
+ * Checks one parsed CSV row before it is uploaded. Returns a list of problems
+ * (empty = valid). Mirrors backend/utils/validateBulkUserRow.js, which re-checks
+ * every row on the server too.
+ */
+function validateBulkCsvRow(row) {
+  const problems = [];
+  const roll = String(row.roll_no ?? '').trim();
+  const pwd = String(row.password ?? '');
+  const name = String(row.first_name ?? '').trim();
+  const mob = String(row.mobile ?? '').trim();
+  const role = String(row.role ?? '').trim();
+  const gender = String(row.gender ?? '').trim();
+
+  if (!roll || !pwd || !name || !mob || !role) {
+    problems.push('Missing required field(s) (roll_no, password, first_name, mobile, role).');
+    return problems;
+  }
+
+  if (/\s/.test(pwd)) problems.push('Password cannot contain spaces.');
+  else if (pwd.length < 7) problems.push('Password must be at least 7 characters.');
+  else if (!/[A-Z]/.test(pwd)) problems.push('Password needs at least one uppercase letter.');
+  else if (!/[0-9]/.test(pwd)) problems.push('Password needs at least one number.');
+  else if (!/[^A-Za-z0-9\s]/.test(pwd)) problems.push('Password needs at least one special character (e.g. @ # $ !).');
+
+  if (gender && !['Male', 'Female', 'Other'].includes(gender)) {
+    problems.push(`Gender must be Male, Female or Other with a capital first letter (got "${gender}").`);
+  }
+
+  if (!/^\d+$/.test(mob)) problems.push('Mobile must contain digits only.');
+  else if (mob.length !== 10) problems.push('Mobile must be exactly 10 digits.');
+  else if (!/^[6-9]/.test(mob)) problems.push('Mobile must start with 6, 7, 8 or 9.');
+
+  if (!['admin', 'security'].includes(role)) problems.push(`Role must be admin or security (got "${role}").`);
+
+  return problems;
+}

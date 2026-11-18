@@ -6,6 +6,7 @@ const multer = require('multer');
 const User = require('../models/User');
 
 const { requireRole, ownGuardOrAdmin, selfOrAdminParam } = require('../middleware/auth');
+const { validateBulkUserRow } = require('../utils/validateBulkUserRow');
 
 const router = express.Router();
 
@@ -246,19 +247,14 @@ router.post('/bulk', requireRole('admin'), async (req, res) => {
       const rowNum = i + 2; // +2 so it matches the CSV line number (1 = header row)
       const { roll_no, password, first_name, gender, designation, mobile, role } = rows[i] || {};
 
-      if (!roll_no || !password || !first_name || !mobile || !role) {
-        results.push({ row: rowNum, roll_no: roll_no || '', status: 'skipped', reason: 'Missing required field(s).' });
-        continue;
-      }
-      if (!ALLOWED_ROLES.includes(String(role).trim())) {
-        results.push({ row: rowNum, roll_no, status: 'skipped', reason: "role must be 'admin' or 'security'." });
+      // Strict per-row validation: password strength, gender (Male / Female /
+      // Other, capital first letter), 10-digit mobile, role admin or security.
+      const problems = validateBulkUserRow(rows[i]);
+      if (problems.length) {
+        results.push({ row: rowNum, roll_no: roll_no || '', status: 'skipped', reason: problems.join(' ') });
         continue;
       }
       const normalizedGender = normalizeGender(gender);
-      if (normalizedGender === null) {
-        results.push({ row: rowNum, roll_no, status: 'skipped', reason: "gender must be 'Male', 'Female' or 'Other' (or left blank)." });
-        continue;
-      }
 
       try {
         const existing = await User.findOne({ roll_no: String(roll_no).trim() });
