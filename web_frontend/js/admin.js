@@ -171,6 +171,13 @@ function render(section) {
   }
 
   currentSection = section;
+  // Home is tinted by duty type (Day = amber, Night = indigo, same as the
+  // mobile app); every other page keeps the normal look.
+  if (section === 'home') {
+    document.documentElement.setAttribute('data-duty', homeDutyType === 'Night Duty' ? 'night' : 'day');
+  } else {
+    document.documentElement.removeAttribute('data-duty');
+  }
   // The switch only belongs on the Home page.
   const _sw = document.getElementById('dutyTypeSwitch');
   if (_sw) _sw.style.display = section === 'home' ? '' : 'none';
@@ -256,7 +263,7 @@ const renderers = {
       </div>
     </div>
     <div class="card">
-      <div class="card-title" style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+      <div class="card-title duty-head" style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
         <span id="recentScansHeading">Today's QR Code Scanned Data</span>
         <input type="date" class="recent-scans-date" id="recentScansDate" value="${todayISODate()}" max="${todayISODate()}">
       </div>
@@ -314,8 +321,8 @@ const renderers = {
     ${sectionHead('Images', 'Upload site-visit photo evidence and review what has been submitted.')}
 
     <div class="tabs" id="imagesTabs">
-      <button class="tab-btn active" data-tab="uploadImage" type="button">Upload Image</button>
-      <button class="tab-btn" data-tab="getUploadImages" type="button">Get Upload Images</button>
+      <button class="tab-btn active" data-tab="uploadImage" type="button"><svg class="btn-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3"/></svg><span>Upload Image</span></button>
+      <button class="tab-btn" data-tab="getUploadImages" type="button"><svg class="btn-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><path d="M13 21l4-5 4 5z"/></svg><span>Get Upload Images</span></button>
     </div>
 
     <div class="tab-panel" id="tab-uploadImage">
@@ -323,7 +330,7 @@ const renderers = {
         <div class="image-tile" style="margin-bottom:14px;"><div class="ph" style="height:160px;">🖼</div></div>
         <input type="file" id="imageFileInput" accept=".jpg,.jpeg,.png,image/jpeg,image/png" style="display:none;">
         <div style="display:flex; gap:10px;">
-          <button class="btn btn-outline" id="pickImgBtn" style="flex:1;">Pick Image</button>
+          <button class="btn btn-outline" id="pickImgBtn" style="flex:1;"><svg class="btn-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg><span>Pick Image</span></button>
         </div>
         <div class="field" style="margin-top:14px;">
           <label>Comment <span style="color:var(--amber);">*</span></label>
@@ -332,7 +339,7 @@ const renderers = {
             <span id="imageCommentCount" style="font-size:11px; color:var(--ink-500);">0 / 500</span>
           </div>
         </div>
-        <button class="btn btn-primary" id="uploadImgBtn" style="width:100%;" disabled>Upload</button>
+        <button class="btn btn-primary" id="uploadImgBtn" style="width:100%;" disabled><svg class="btn-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3"/></svg><span>Upload</span></button>
         <div class="error-text" id="imageUploadError"></div>
         <p style="color:var(--ink-500); font-size:11.5px; margin-top:8px;">
           Accepted formats: JPG, JPEG, PNG only. Size must be between 10 KB and 2 MB. Comment must be 3-500 characters.
@@ -351,45 +358,45 @@ const renderers = {
     ${sectionHead('Security Data', 'Register new accounts and review everyone already registered.')}
 
     <div class="tabs" id="securityDataTabs">
-      <button class="tab-btn active" data-tab="addSecurity" type="button">Add Security</button>
-      <button class="tab-btn" data-tab="securityInfo" type="button">Security Information</button>
+      <button class="tab-btn active" data-tab="addSecurity" type="button"><svg class="btn-ico" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 016-6h2"/><path d="M19 8v6M16 11h6"/></svg><span>Add Security</span></button>
+      <button class="tab-btn" data-tab="securityInfo" type="button"><svg class="btn-ico" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg><span>Security Information</span></button>
     </div>
 
     <div class="tab-panel" id="tab-addSecurity">
       <div class="two-col with-or">
         <div class="card">
-          <div class="card-title">New account</div>
+          <div class="card-title sec-title"><span class="sec-badge tone-amber"><svg class="" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 016-6h4a6 6 0 016 6v1"/></svg></span><span>New account</span></div>
           <form id="addGuardForm" novalidate>
             <div class="form-grid">
-              <div class="field"><label>Full name</label><input required name="first_name" maxlength="50" autocomplete="off" /><div class="error-text field-error" data-for="first_name"></div></div>
-              <div class="field"><label>Roll No</label><input required name="roll_no" maxlength="20" autocomplete="off" /><div class="error-text field-error" data-for="roll_no"></div></div>
-              <div class="field"><label>Password</label><input required type="text" name="password" maxlength="64" autocomplete="off" /><div class="error-text field-error" data-for="password"></div></div>
+              <div class="field"><label>Full name</label><div class="input-icon"><svg class="field-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 016-6h4a6 6 0 016 6v1"/></svg><input required name="first_name" maxlength="50" placeholder="Enter full name" autocomplete="off" /></div><div class="error-text field-error" data-for="first_name"></div></div>
+              <div class="field"><label>Roll No</label><div class="input-icon"><svg class="field-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 9h14M5 15h14M10 3L8 21M16 3l-2 18"/></svg><input required name="roll_no" maxlength="20" placeholder="Enter Roll No" autocomplete="off" /></div><div class="error-text field-error" data-for="roll_no"></div></div>
+              <div class="field"><label>Password</label><div class="input-icon"><svg class="field-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg><input required type="password" name="password" maxlength="64" placeholder="••••••••" autocomplete="new-password" /><button type="button" class="pw-toggle" id="newGuardPwToggle" aria-label="Show password" title="Show password"><span class="eye-on"><svg class="" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></span><span class="eye-off" style="display:none"><svg class="" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.7 10.7 0 0112 5c6.4 0 10 7 10 7a17.6 17.6 0 01-3.2 4.2M6.6 6.6A17.4 17.4 0 002 12s3.6 7 10 7c1.8 0 3.4-.5 4.8-1.2"/><path d="M9.9 9.9a3 3 0 004.2 4.2"/></svg></span></button></div><div class="error-text field-error" data-for="password"></div></div>
               <div class="field">
                 <label>Role</label>
-                <select name="role" required>
+                <div class="input-icon has-select"><svg class="field-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6l7-3z"/></svg><select name="role" required>
                   <option value="security" selected>Security Guard</option>
                   <option value="admin">Admin</option>
-                </select>
+                </select></div>
                 <div class="error-text field-error" data-for="role"></div>
               </div>
-              <div class="field"><label>Mobile</label><input required name="mobile" type="tel" inputmode="numeric" maxlength="10" placeholder="10-digit number" autocomplete="off" /><div class="error-text field-error" data-for="mobile"></div></div>
+              <div class="field"><label>Mobile</label><div class="input-icon"><svg class="field-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg><input required name="mobile" type="tel" inputmode="numeric" maxlength="10" placeholder="10-digit number" autocomplete="off" /></div><div class="error-text field-error" data-for="mobile"></div></div>
               <div class="field">
                 <label>Gender</label>
-                <select name="gender" required>
+                <div class="input-icon has-select"><svg class="field-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="9" r="4"/><path d="M9 13v8M6 18h6"/><path d="M15 4h5v5M20 4l-5 5"/></svg><select name="gender" required>
                   <option value="" selected disabled>Select gender</option>
                   <option value="Male">Male</option>
                   <option value="Female">Female</option>
                   <option value="Other">Other</option>
-                </select>
+                </select></div>
                 <div class="error-text field-error" data-for="gender"></div>
               </div>
-              <div class="field" style="grid-column: 1 / -1;"><label>Designation</label><input required name="designation" maxlength="50" placeholder="Security Guard" autocomplete="off" /><div class="error-text field-error" data-for="designation"></div></div>
+              <div class="field" style="grid-column: 1 / -1;"><label>Designation</label><div class="input-icon"><svg class="field-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M3 13h18"/></svg><input required name="designation" maxlength="50" placeholder="Security Guard" autocomplete="off" /></div><div class="error-text field-error" data-for="designation"></div></div>
               <div class="field" style="grid-column: 1 / -1;">
                 <label>Profile Pic <span style="color:var(--ink-500); font-weight:400;">(optional)</span></label>
                 <div style="display:flex; align-items:center; gap:12px;">
                   <div class="avatar" id="newGuardAvatarPreview" style="width:48px; height:48px; font-size:18px; flex-shrink:0;">＋</div>
                   <input type="file" id="newGuardPicInput" accept=".jpg,.jpeg,.png,image/jpeg,image/png" style="display:none;">
-                  <button type="button" class="btn btn-outline" id="newGuardPicBtn" style="width:auto; padding:8px 16px;">Choose Photo</button>
+                  <button type="button" class="btn btn-outline" id="newGuardPicBtn" style="width:auto; padding:8px 16px;"><svg class="btn-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8a2 2 0 012-2h2l1.5-2h5L16 6h2a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2z"/><circle cx="12" cy="13" r="3.5"/></svg><span>Choose Photo</span></button>
                   <span style="color:var(--ink-500); font-size:11.5px;">JPG or PNG, max 2 MB</span>
                 </div>
                 <div class="error-text" id="newGuardPicError"></div>
@@ -397,12 +404,12 @@ const renderers = {
             </div>
             <div class="error-text" id="addGuardError" style="margin-bottom:10px;"></div>
             <div id="addGuardSuccess" style="color:var(--success); font-size:13px; margin-bottom:10px;"></div>
-            <button class="btn btn-primary" style="width:auto; padding:10px 22px;" type="submit">Add Account</button>
+            <button class="btn btn-primary" style="width:auto; padding:10px 22px;" type="submit"><svg class="btn-ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 016-6h2"/><path d="M19 8v6M16 11h6"/></svg><span>Add Account</span></button>
           </form>
         </div>
         <div class="or-divider" aria-hidden="true"><span>OR</span></div>
         <div class="card">
-          <div class="card-title">Bulk upload (CSV)</div>
+          <div class="card-title sec-title"><span class="sec-badge tone-teal"><svg class="" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6M9 9h2"/></svg></span><span>Bulk upload (CSV)</span></div>
           <p style="color:var(--ink-500); font-size:12.5px; margin-bottom:4px;">
             Columns: <code>roll_no, password, first_name, gender, designation, mobile, role</code> — role must be
             <code>admin</code> or <code>security</code>; gender must be <code>Male</code>, <code>Female</code> or
@@ -412,9 +419,9 @@ const renderers = {
           </p>
           <div class="bulk-upload-box">
             <div class="row">
-              <button class="btn btn-outline" id="downloadTemplateBtn" type="button">Download CSV Template</button>
-              <input type="file" id="csvFileInput" accept=".csv,text/csv" />
-              <button class="btn btn-primary" id="uploadCsvBtn" type="button" style="width:auto; padding:10px 18px;" disabled>Upload CSV</button>
+              <button class="btn btn-outline" id="downloadTemplateBtn" type="button"><svg class="btn-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5"/><path d="M4 20h16"/></svg><span>Download CSV Template</span></button>
+              <input type="file" id="csvFileInput" accept=".csv,text/csv" style="display:none;" /><button class="btn btn-outline" id="csvChooseBtn" type="button"><svg class="btn-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11l-8.5 8.5a5 5 0 01-7-7L14 4a3.5 3.5 0 015 5l-8.5 8.5a2 2 0 01-3-3L14.5 7"/></svg><span>Choose File</span></button><span class="csv-file-name" id="csvFileName">No file chosen</span>
+              <button class="btn btn-primary" id="uploadCsvBtn" type="button" style="width:auto; padding:10px 18px;" disabled><svg class="btn-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3"/></svg><span>Upload CSV</span></button>
             </div>
             <div id="bulkUploadStatus" style="margin-top:10px; font-size:12.5px; color:var(--ink-500);"></div>
             <div id="bulkResultList" class="bulk-result-list"></div>
@@ -459,44 +466,44 @@ const renderers = {
     ${sectionHead('Duty Places', 'A main place (site) contains one or more sub-places, each with its own QR code.')}
 
     <div class="tabs" id="dutyPlaceTabs">
-      <button class="tab-btn active" data-tab="newPlace" type="button">New Place</button>
-      <button class="tab-btn" data-tab="addSubPlaces" type="button">Add Sub Places</button>
-      <button class="tab-btn" data-tab="existingPlaces" type="button">Existing Duty Places</button>
-      <button class="tab-btn" data-tab="generateQr" type="button">Generate QR Code</button>
+      <button class="tab-btn active" data-tab="newPlace" type="button"><svg class="btn-ico" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6-5.6-6-10.5a6 6 0 0112 0C18 15.4 12 21 12 21z"/><path d="M12 8v5M9.5 10.5h5"/></svg><span>New Place</span></button>
+      <button class="tab-btn" data-tab="addSubPlaces" type="button"><svg class="btn-ico" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg><span>Add Sub Places</span></button>
+      <button class="tab-btn" data-tab="existingPlaces" type="button"><svg class="btn-ico" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg><span>Existing Duty Places</span></button>
+      <button class="tab-btn" data-tab="generateQr" type="button"><svg class="btn-ico" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v3M14 20h3M20 20h1"/></svg><span>Generate QR Code</span></button>
     </div>
 
     <div class="tab-panel" id="tab-newPlace">
       <div class="card" style="max-width:520px;">
-        <div class="card-title">New duty place</div>
-        <div class="field"><label>Main place</label><input id="mainPlaceInput" placeholder="e.g. North Campus" /></div>
+        <div class="card-title sec-title"><span class="sec-badge tone-amber"><svg class="" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6-5.6-6-10.5a6 6 0 0112 0C18 15.4 12 21 12 21z"/><path d="M12 8v5M9.5 10.5h5"/></svg></span><span>New duty place</span></div>
+        <div class="field"><label>Main place</label><div class="input-icon"><svg class="field-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 7h2M13 7h2M9 11h2M13 11h2M10 21v-4h4v4"/></svg><input id="mainPlaceInput" placeholder="e.g. North Campus" /></div></div>
         <div class="field" style="display:flex; gap:8px; align-items:flex-end;">
-          <div style="flex:1;"><label style="display:block; font-size:12.5px; color:var(--ink-300); margin-bottom:6px;">Sub place</label><input id="subPlaceInput" placeholder="e.g. Gate C" /></div>
-          <button class="btn btn-outline" id="addSubPlaceBtn" type="button">+</button>
+          <div style="flex:1;"><label style="display:block; font-size:12.5px; color:var(--ink-300); margin-bottom:6px;">Sub place</label><div class="input-icon"><svg class="field-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6a3 3 0 016 0v6"/></svg><input id="subPlaceInput" placeholder="e.g. Gate C" /></div></div>
+          <button class="btn btn-outline" id="addSubPlaceBtn" type="button" aria-label="Add sub place" title="Add sub place"><svg class="btn-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
         </div>
         <div id="pendingSubPlaces" style="margin:10px 0;"></div>
         <div class="error-text" id="newPlaceError"></div>
-        <button class="btn btn-primary" id="saveDutyPlaceBtn" style="width:auto; padding:10px 22px;">Save Duty Place</button>
+        <button class="btn btn-primary" id="saveDutyPlaceBtn" style="width:auto; padding:10px 22px;"><svg class="btn-ico" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h11l4 4v13a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M8 3v5h7V3M8 21v-7h8v7"/></svg><span>Save Duty Place</span></button>
       </div>
     </div>
 
     <div class="tab-panel" id="tab-addSubPlaces" style="display:none;">
       <div class="card" style="max-width:520px;">
-        <div class="card-title">Add sub places to an existing main place</div>
+        <div class="card-title sec-title"><span class="sec-badge tone-amber"><svg class="" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg></span><span>Add sub places to an existing main place</span></div>
         <div class="field">
           <label>Main place</label>
-          <select id="subPlacesMainSelect"><option value="">Select a main place</option></select>
+          <div class="input-icon has-select"><svg class="field-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 7h2M13 7h2M9 11h2M13 11h2M10 21v-4h4v4"/></svg><select id="subPlacesMainSelect"><option value="">Select a main place</option></select></div>
         </div>
         <div class="field">
           <label style="display:block; font-size:12.5px; color:var(--ink-300); margin-bottom:6px;">Existing sub places</label>
           <div id="existingSubPlacesChips"><span style="color:var(--ink-500); font-size:12.5px;">Select a main place above</span></div>
         </div>
         <div class="field" style="display:flex; gap:8px; align-items:flex-end;">
-          <div style="flex:1;"><label style="display:block; font-size:12.5px; color:var(--ink-300); margin-bottom:6px;">New sub place</label><input id="newSubPlaceInput" placeholder="e.g. Gate D" disabled /></div>
-          <button class="btn btn-outline" id="addNewSubPlaceBtn" type="button" disabled>+</button>
+          <div style="flex:1;"><label style="display:block; font-size:12.5px; color:var(--ink-300); margin-bottom:6px;">New sub place</label><div class="input-icon"><svg class="field-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6a3 3 0 016 0v6"/></svg><input id="newSubPlaceInput" placeholder="e.g. Gate D" disabled /></div></div>
+          <button class="btn btn-outline" id="addNewSubPlaceBtn" type="button" aria-label="Add sub place" title="Add sub place" disabled><svg class="btn-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
         </div>
         <div id="pendingNewSubPlaces" style="margin:10px 0;"></div>
         <div class="error-text" id="addSubPlacesError"></div>
-        <button class="btn btn-primary" id="saveSubPlacesBtn" style="width:auto; padding:10px 22px;" disabled>Add Sub Places</button>
+        <button class="btn btn-primary" id="saveSubPlacesBtn" style="width:auto; padding:10px 22px;" disabled><svg class="btn-ico" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg><span>Add Sub Places</span></button>
       </div>
     </div>
 
@@ -516,7 +523,7 @@ const renderers = {
                 <option value="100">100</option>
               </select>
             </div>
-            <button class="btn btn-outline" id="downloadDutyPlacesBtn" type="button">⬇ Download Excel</button>
+            <button class="btn btn-outline" id="downloadDutyPlacesBtn" type="button"><svg class="btn-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5M9 13l4 4M13 13l-4 4"/></svg><span>Download Excel</span></button>
           </div>
         </div>
         <div id="dutyPlacesTableWrap"><p style="color:var(--ink-500); font-size:13px;"><span class="spinner" role="status" aria-label="Loading"></span><span class="loader-text">Loading...</span></p></div>
@@ -532,22 +539,22 @@ const renderers = {
 
     <div class="tab-panel" id="tab-generateQr" style="display:none;">
       <div class="card" style="max-width:480px;">
-        <div class="card-title">Generate a QR code for a sub place</div>
+        <div class="card-title sec-title"><span class="sec-badge tone-teal"><svg class="" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v3M14 20h3M20 20h1"/></svg></span><span>Generate a QR code for a sub place</span></div>
         <div class="field">
           <label>Main place</label>
-          <select id="qrMainPlaceSelect"><option value="">Select a main place</option></select>
+          <div class="input-icon has-select"><svg class="field-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 7h2M13 7h2M9 11h2M13 11h2M10 21v-4h4v4"/></svg><select id="qrMainPlaceSelect"><option value="">Select a main place</option></select></div>
         </div>
         <div class="field" style="margin-bottom:0;">
           <label>Sub place</label>
-          <select id="qrSubPlaceSelect" disabled><option value="">Select a main place first</option></select>
+          <div class="input-icon has-select"><svg class="field-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6a3 3 0 016 0v6"/></svg><select id="qrSubPlaceSelect" disabled><option value="">Select a main place first</option></select></div>
         </div>
         <div class="error-text" id="qrGenerateError"></div>
       </div>
 
       <div class="card" id="qrPreviewCard" style="max-width:420px; display:none; text-align:center;">
-        <div class="card-title" style="text-align:left;">Preview</div>
+        <div class="card-title sec-title" style="text-align:left;"><span class="sec-badge tone-teal"><svg class="" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></span><span>Preview</span></div>
         <div id="qrPreviewWrap" style="display:flex; flex-direction:column; align-items:center; gap:10px;"></div>
-        <button class="btn btn-primary" id="downloadQrPdfBtn" type="button" style="width:auto; padding:10px 22px; margin-top:18px;" disabled>⬇ Download as PDF</button>
+        <button class="btn btn-primary" id="downloadQrPdfBtn" type="button" style="width:auto; padding:10px 22px; margin-top:18px;" disabled><svg class="btn-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5"/><path d="M4 20h16"/></svg><span>Download as PDF</span></button>
       </div>
     </div>
   `,
@@ -556,24 +563,24 @@ const renderers = {
     ${sectionHead('Assign Duty', 'Assign duty to guards, review what is scheduled, and track completion.')}
 
     <div class="tabs" id="dutyStatusTabs">
-      <button class="tab-btn active" data-tab="assignDuty" type="button">Assign Duty to Guard</button>
-      <button class="tab-btn" data-tab="showAssigned" type="button">Show Assigned Duties</button>
-      <button class="tab-btn" data-tab="scanTime" type="button">Set Scan Time</button>
+      <button class="tab-btn active" data-tab="assignDuty" type="button"><svg class="btn-ico" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9zM9 14l2 2 4-4"/></svg><span>Assign Duty to Guard</span></button>
+      <button class="tab-btn" data-tab="showAssigned" type="button"><svg class="btn-ico" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h12M9 12h12M9 18h12"/><path d="M3.5 6l1 1 2-2M3.5 12l1 1 2-2M3.5 18l1 1 2-2"/></svg><span>Show Assigned Duties</span></button>
+      <button class="tab-btn" data-tab="scanTime" type="button"><svg class="btn-ico" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Set Scan Time</span></button>
     </div>
 
     <div class="tab-panel" id="tab-assignDuty">
       <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:flex-start;">
         <div class="card" style="width:280px; max-width:100%;">
-          <div class="field" style="margin-bottom:0;"><label>Duty date</label><input type="date" id="assignDutyDate" /></div>
+          <div class="field" style="margin-bottom:0;"><label>Duty date</label><div class="input-icon"><svg class="field-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><input type="date" id="assignDutyDate" /></div></div>
         </div>
-        <div class="card" style="width:280px; max-width:100%;">
+        <div class="card duty-type-card" style="width:280px; max-width:100%;">
           <div class="field" style="margin-bottom:0;">
             <label>Duty type</label>
-            <select id="assignDutyType">
+            <div class="input-icon has-select"><span class="field-icon" id="assignDutyTypeIco" style="display:flex;"><svg class="" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9zM9 14l2 2 4-4"/></svg></span><select id="assignDutyType">
               <option value="" selected disabled>Select duty type</option>
               <option value="Day Duty">Day Duty</option>
               <option value="Night Duty">Night Duty</option>
-            </select>
+            </select></div>
           </div>
         </div>
         <div id="assignDutyRangeNote" style="align-self:center; font-size:13px; color:var(--ink-500); max-width:360px;">Select a duty type to start assigning duties.</div>
@@ -581,26 +588,26 @@ const renderers = {
 
       <div class="assign-board" id="assignBoard" style="opacity:.45; pointer-events:none;">
         <div class="card assign-col">
-          <div class="card-title">Main Places</div>
+          <div class="card-title sec-title"><span class="sec-badge tone-amber"><svg class="" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 7h2M13 7h2M9 11h2M13 11h2M10 21v-4h4v4"/></svg></span><span>Main Places</span></div>
           <input type="text" id="assignPlacesSearch" class="mini-search" placeholder="Search main places..." />
           <div class="assign-hint">Drag a place into the Duty Assignments column (or click it)</div>
           <div id="assignPlacesList" class="assign-list"><p style="color:var(--ink-500); font-size:13px;">Loading...</p></div>
         </div>
         <div class="card assign-col">
-          <div class="card-title">Guards</div>
+          <div class="card-title sec-title"><span class="sec-badge tone-amber"><svg class="" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg></span><span>Guards</span></div>
           <input type="text" id="assignGuardsSearch" class="mini-search" placeholder="Search guards..." />
           <div class="assign-hint">Drag a guard onto a duty card (or click to fill the next empty card)</div>
           <div id="assignGuardsList" class="assign-list"><p style="color:var(--ink-500); font-size:13px;">Loading...</p></div>
         </div>
         <div class="card assign-col">
-          <div class="card-title">Duty Assignments</div>
+          <div class="card-title sec-title"><span class="sec-badge tone-amber"><svg class="" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9zM9 14l2 2 4-4"/></svg></span><span>Duty Assignments</span></div>
           <div class="assign-hint">Drop a main place here, then drop a guard onto its card. Pick a duty date above to see what's already assigned for that day.</div>
           <div id="assignDropZone" class="assign-list assign-dropzone"></div>
         </div>
       </div>
 
       <div class="card" style="margin-top:16px;">
-        <button class="btn btn-outline" id="previewAssignBtn" type="button" style="width:auto; padding:10px 22px;">Show Preview</button>
+        <button class="btn btn-outline" id="previewAssignBtn" type="button" style="width:auto; padding:10px 22px;"><svg class="btn-ico" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><span>Show Preview</span></button>
         <div id="assignPreviewWrap"></div>
       </div>
     </div>
@@ -612,11 +619,11 @@ const renderers = {
             <input type="text" id="assignedSearchInput" placeholder="Search by guard or main place..." />
           </div>
           <div class="toolbar-right">
-            <select id="assignedDutyTypeFilter" title="Filter by duty type">
+            <div class="input-icon has-select toolbar-select"><span class="field-icon" id="assignedDutyTypeIco" style="display:flex;"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9zM9 14l2 2 4-4"/></svg></span><select id="assignedDutyTypeFilter" title="Filter by duty type">
               <option value="" selected disabled>Select duty type</option>
               <option value="Day Duty">Day Duty</option>
               <option value="Night Duty">Night Duty</option>
-            </select>
+            </select></div>
             <input type="date" id="assignedDateFilter" title="Filter by duty date" value="${todayISODate()}" />
             <div class="page-size-field">
               <label for="assignedPageSizeSelect">Rows per page</label>
@@ -627,7 +634,7 @@ const renderers = {
                 <option value="100">100</option>
               </select>
             </div>
-            <button class="btn btn-outline" id="downloadAssignedPdfBtn" type="button" disabled title="Select a duty type to download">⬇ Download PDF</button>
+            <button class="btn btn-outline" id="downloadAssignedPdfBtn" type="button" disabled title="Select a duty type to download"><svg class="btn-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5"/><path d="M4 20h16"/></svg><span>Download PDF</span></button>
           </div>
         </div>
         <div id="assignedTableWrap"><p style="color:var(--ink-500); font-size:13px;">Select a duty type to view the assigned duties.</p></div>
@@ -647,8 +654,8 @@ const renderers = {
           { key: 'dayDuty', title: 'Day Duty' },
           { key: 'nightDuty', title: 'Night Duty' },
         ].map(({ key, title }) => `
-        <div class="card" style="margin-bottom:0;">
-          <div class="card-title">${title}</div>
+        <div class="card scan-time-card" data-duty="${key === 'nightDuty' ? 'night' : 'day'}" style="margin-bottom:0;">
+          <div class="card-title scan-time-title">${key === 'nightDuty' ? '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg>' : '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>'}<span>${title}</span></div>
           <p id="${key}Current" style="color:var(--ink-500); font-size:13px; margin:-6px 0 16px;">Loading current window...</p>
           ${['From', 'To'].map(side => `
           <div class="field">
@@ -667,7 +674,7 @@ const renderers = {
             </div>
           </div>`).join('')}
           <div class="error-text" id="${key}Error"></div>
-          <button class="btn btn-primary" id="${key}SaveBtn" type="button" style="margin-top:16px; width:auto; padding:10px 22px;">Submit</button>
+          <button class="btn btn-primary" id="${key}SaveBtn" type="button" style="margin-top:16px; width:auto; padding:10px 22px;"><svg class="btn-ico" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg><span>Submit</span></button>
         </div>`).join('')}
       </div>
     </div>
@@ -678,7 +685,7 @@ const renderers = {
     <div class="card" style="max-width:420px; text-align:center;">
       <div class="avatar" id="profileAvatar" style="width:80px; height:80px; font-size:28px; margin:0 auto 16px;">${escapeHtml(user.first_name.charAt(0))}</div>
       <input type="file" id="profilePicInput" accept=".jpg,.jpeg,.png,image/jpeg,image/png" style="display:none;">
-      <button class="btn btn-outline" id="changePhotoBtn" style="width:auto; padding:8px 18px; margin-bottom:6px;">Change Photo</button>
+      <button class="btn btn-outline" id="changePhotoBtn" style="width:auto; padding:8px 18px; margin-bottom:6px;"><svg class="btn-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8a2 2 0 012-2h2l1.5-2h5L16 6h2a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2z"/><circle cx="12" cy="13" r="3.5"/></svg><span>Change Photo</span></button>
       <div class="error-text" id="profilePicError"></div>
       <p style="color:var(--ink-500); font-size:11.5px; margin-bottom:18px;">JPG or PNG only, max 2 MB.</p>
       <table style="text-align:left;">
@@ -702,8 +709,8 @@ renderers.account = () => {
   return `
     ${sectionHead('Personal Data', 'Your profile details and password.')}
     <div class="tabs" id="accountTabs">
-      <button class="tab-btn active" data-tab="accProfile" type="button">Profile</button>
-      <button class="tab-btn" data-tab="accPassword" type="button">Change Password</button>
+      <button class="tab-btn active" data-tab="accProfile" type="button"><svg class="btn-ico" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 016-6h4a6 6 0 016 6v1"/></svg><span>Profile</span></button>
+      <button class="tab-btn" data-tab="accPassword" type="button"><svg class="btn-ico" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3M14 9l2 2"/></svg><span>Change Password</span></button>
     </div>
     <div class="tab-panel" id="tab-accProfile">${strip(renderers.profile())}</div>
     <div class="tab-panel" id="tab-accPassword" style="display:none;">${strip(renderers.changePassword())}</div>
@@ -1186,6 +1193,7 @@ function attachHandlers(section) {
 
     // ======================================================================
     // Tab: Upload Image
+    const UPLOAD_BTN_HTML = '<svg class="btn-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3"/></svg><span>Upload</span>';
     //  - jpg/jpeg/png only, checked by both MIME type and file extension
     //    (some browsers/OSes leave `file.type` blank for local files, so the
     //    extension check is the fallback that always works), AND the file
@@ -1329,7 +1337,7 @@ function attachHandlers(section) {
       errBox.textContent = '';
       uploadBtn.disabled = true;
       pickBtn.disabled = true;
-      uploadBtn.textContent = 'Uploading...';
+      uploadBtn.innerHTML = '<span>Uploading...</span>';
       try {
         await uploadImageViaApi({
           file: selectedFile,
@@ -1345,7 +1353,7 @@ function attachHandlers(section) {
         errBox.textContent = err.message || 'Could not upload the image.';
         refreshUploadButton();
       } finally {
-        uploadBtn.textContent = 'Upload';
+        uploadBtn.innerHTML = UPLOAD_BTN_HTML;
         pickBtn.disabled = false;
       }
     });
@@ -1652,6 +1660,18 @@ function attachHandlers(section) {
 
     newGuardPicBtn.addEventListener('click', () => newGuardPicInput.click());
 
+    // Show / hide the password typed in the "New account" form
+    const newGuardPwToggle = document.getElementById('newGuardPwToggle');
+    newGuardPwToggle.addEventListener('click', () => {
+      const pwInput = document.querySelector('#addGuardForm input[name="password"]');
+      const show = pwInput.type === 'password';
+      pwInput.type = show ? 'text' : 'password';
+      newGuardPwToggle.querySelector('.eye-on').style.display = show ? 'none' : '';
+      newGuardPwToggle.querySelector('.eye-off').style.display = show ? '' : 'none';
+      newGuardPwToggle.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+      newGuardPwToggle.title = show ? 'Hide password' : 'Show password';
+    });
+
     newGuardPicInput.addEventListener('change', () => {
       newGuardPicError.textContent = '';
       const file = newGuardPicInput.files && newGuardPicInput.files[0];
@@ -1829,6 +1849,14 @@ function attachHandlers(section) {
     document.getElementById('downloadTemplateBtn').addEventListener('click', downloadCsvTemplate);
 
     const fileInput = document.getElementById('csvFileInput');
+    const csvChooseBtn = document.getElementById('csvChooseBtn');
+    const csvFileName = document.getElementById('csvFileName');
+    function syncCsvName() {
+      const f = fileInput.files && fileInput.files[0];
+      csvFileName.textContent = f ? f.name : 'No file chosen';
+    }
+    csvChooseBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', syncCsvName);
     const uploadBtn = document.getElementById('uploadCsvBtn');
     const statusBox = document.getElementById('bulkUploadStatus');
     const resultList = document.getElementById('bulkResultList');
@@ -1889,6 +1917,7 @@ function attachHandlers(section) {
         } finally {
           uploadBtn.disabled = false;
           fileInput.value = '';
+          syncCsvName();
           selectedFile = null;
         }
       };
@@ -2566,7 +2595,7 @@ function attachHandlers(section) {
 
     document.getElementById('downloadDutyPlacesBtn').addEventListener('click', async () => {
       const btn = document.getElementById('downloadDutyPlacesBtn');
-      const originalLabel = btn.textContent;
+      const originalLabel = btn.innerHTML;
       btn.disabled = true;
       btn.textContent = 'Preparing...';
       try {
@@ -2588,7 +2617,7 @@ function attachHandlers(section) {
         alert('Could not export: ' + err.message);
       } finally {
         btn.disabled = false;
-        btn.textContent = originalLabel;
+        btn.innerHTML = originalLabel;
       }
     });
 
@@ -2791,7 +2820,7 @@ function attachHandlers(section) {
         const to = readTimeFields(card.key, 'To');
 
         btn.disabled = true;
-        const originalLabel = btn.textContent;
+        const originalLabel = btn.innerHTML;
         btn.textContent = 'Saving...';
         try {
           const saved = await saveScanTimeViaApi(from, to, card.type);
@@ -2802,7 +2831,7 @@ function attachHandlers(section) {
           errBox.textContent = err.message || `Could not save the ${card.label}.`;
         } finally {
           btn.disabled = false;
-          btn.textContent = originalLabel;
+          btn.innerHTML = originalLabel;
         }
       });
     });
@@ -2855,6 +2884,12 @@ function attachHandlers(section) {
       const note = document.getElementById('assignDutyRangeNote');
       board.style.opacity = type ? '' : '.45';
       board.style.pointerEvents = type ? '' : 'none';
+      // Colour the whole panel by duty type: Day = amber, Night = indigo.
+      const _ico = document.getElementById('assignDutyTypeIco');
+      if (_ico) _ico.innerHTML = '<svg class="" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">@@</svg>'.replace('@@', type === 'Night Duty' ? '<path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/>' : type === 'Day Duty' ? '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>' : '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9zM9 14l2 2 4-4"/>');
+      const panel = document.getElementById('tab-assignDuty');
+      if (type) panel.setAttribute('data-duty', type === 'Night Duty' ? 'night' : 'day');
+      else panel.removeAttribute('data-duty');
       if (!type) {
         note.textContent = 'Select a duty type to start assigning duties.';
       } else if (type === 'Night Duty') {
@@ -3219,7 +3254,7 @@ function attachHandlers(section) {
               I've reviewed these duty assignments and confirm they are correct.
             </label>
             <div class="error-text" id="assignSubmitError"></div>
-            <button class="btn btn-primary" id="submitAssignBtn" style="width:auto; padding:10px 22px;" disabled>Submit</button>
+            <button class="btn btn-primary" id="submitAssignBtn" style="width:auto; padding:10px 22px;" disabled><svg class="btn-ico" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg><span>Submit</span></button>
           ` : `
             <p style="color:var(--ink-500); font-size:13px; margin-top:16px;">No new duty assignments to submit - drag a main place and a guard into the Duty Assignments column to add one.</p>
           `}
@@ -3242,7 +3277,7 @@ function attachHandlers(section) {
         const errBox = document.getElementById('assignSubmitError');
         errBox.textContent = '';
         btn.disabled = true;
-        const originalLabel = btn.textContent;
+        const originalLabel = btn.innerHTML;
         btn.textContent = 'Submitting...';
         try {
           const res = await bulkAssignDutiesViaApi({
@@ -3271,7 +3306,7 @@ function attachHandlers(section) {
         } catch (err) {
           errBox.textContent = err.message;
           btn.disabled = false;
-          btn.textContent = originalLabel;
+          btn.innerHTML = originalLabel;
         }
       });
     });
@@ -3311,7 +3346,7 @@ function attachHandlers(section) {
                     <td><b>${escapeHtml(a.guardName)}</b><br><span style="color:var(--ink-500); font-size:11.5px;">${escapeHtml(a.guardEmpId)}</span></td>
                     <td class="preserve-space">${escapeHtml(a.mainPlace)}</td>
                     <td>${a.subPlaces.map(s => `<span class="chip">${s}</span>`).join('')}</td>
-                    <td>${a.dutyType ? escapeHtml(a.dutyType) : '<span style="color:var(--ink-500);">—</span>'}</td>
+                    <td class="duty-type-cell">${a.dutyType ? escapeHtml(a.dutyType) : '<span style="color:var(--ink-500);">—</span>'}</td>
                     <td><span class="badge badge-amber">${escapeHtml(a.dateRange)}</span></td>
                     <td><span class="badge ${completed ? 'badge-neutral' : 'badge-success'}">${completed ? 'Completed' : 'Upcoming'}</span></td>
                     <td style="white-space:nowrap; color:var(--ink-300); font-size:12.5px;">${formatDateTime(a.createdAt)}</td>
@@ -3476,6 +3511,12 @@ function attachHandlers(section) {
     document.getElementById('assignedDutyTypeFilter').addEventListener('change', (e) => {
       assignedState.dutyType = e.target.value;
       assignedState.page = 1;
+      // Colour this tab by duty type: Day = amber, Night = indigo.
+      const assignedIco = document.getElementById('assignedDutyTypeIco');
+      if (assignedIco) assignedIco.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">@@</svg>'.replace('@@', assignedState.dutyType === 'Night Duty' ? '<path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/>' : assignedState.dutyType === 'Day Duty' ? '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>' : '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9zM9 14l2 2 4-4"/>');
+      const assignedPanel = document.getElementById('tab-showAssigned');
+      if (assignedState.dutyType) assignedPanel.setAttribute('data-duty', assignedState.dutyType === 'Night Duty' ? 'night' : 'day');
+      else assignedPanel.removeAttribute('data-duty');
       const pdfBtn = document.getElementById('downloadAssignedPdfBtn');
       pdfBtn.disabled = !assignedState.dutyType;
       pdfBtn.title = assignedState.dutyType ? 'Download the listed duties as PDF' : 'Select a duty type to download';
@@ -3486,7 +3527,7 @@ function attachHandlers(section) {
 
     document.getElementById('downloadAssignedPdfBtn').addEventListener('click', async () => {
       const btn = document.getElementById('downloadAssignedPdfBtn');
-      const originalLabel = btn.textContent;
+      const originalLabel = btn.innerHTML;
       btn.disabled = true;
       btn.textContent = 'Preparing...';
       try {
@@ -3527,7 +3568,7 @@ function attachHandlers(section) {
         alert('Could not export: ' + err.message);
       } finally {
         btn.disabled = false;
-        btn.textContent = originalLabel;
+        btn.innerHTML = originalLabel;
       }
     });
   }
@@ -3600,7 +3641,7 @@ function attachHandlers(section) {
     async function uploadProfilePic(file) {
       errBox.textContent = '';
       changeBtn.disabled = true;
-      const originalLabel = changeBtn.textContent;
+      const originalLabel = changeBtn.innerHTML;
       changeBtn.textContent = 'Uploading...';
       try {
         const { profile_pic } = await uploadProfilePicViaApi(user.roll_no, file);
@@ -3616,7 +3657,7 @@ function attachHandlers(section) {
       } finally {
         picInput.value = '';
         changeBtn.disabled = false;
-        changeBtn.textContent = originalLabel;
+        changeBtn.innerHTML = originalLabel;
       }
     }
   }

@@ -17,15 +17,15 @@ function changePasswordSectionHtml(sectionHead) {
       <form id="cpForm" novalidate autocomplete="off">
         <div class="field">
           <label for="cpCurrent">Current Password</label>
-          <input id="cpCurrent" type="password" autocomplete="current-password" placeholder="Enter current password" />
+          <div class="input-icon"><svg class="field-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg><input id="cpCurrent" type="password" autocomplete="current-password" placeholder="Enter current password" /></div>
         </div>
         <div class="field">
           <label for="cpNew">New Password</label>
-          <input id="cpNew" type="password" autocomplete="new-password" placeholder="Enter new password" maxlength="64" />
+          <div class="input-icon"><svg class="field-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/><circle cx="12" cy="16" r="1"/></svg><input id="cpNew" type="password" autocomplete="new-password" placeholder="Enter new password" maxlength="64" /></div>
         </div>
         <div class="field">
           <label for="cpConfirm">Confirm New Password</label>
-          <input id="cpConfirm" type="password" autocomplete="new-password" placeholder="Re-enter new password" maxlength="64" />
+          <div class="input-icon"><svg class="field-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6l7-3z"/><path d="M9.5 12.5l1.8 1.8 3.2-3.6"/></svg><input id="cpConfirm" type="password" autocomplete="new-password" placeholder="Re-enter new password" maxlength="64" /></div>
         </div>
 
         <ul id="cpRules" style="list-style:none; padding:0; margin:0 0 12px; font-size:12.5px; color:var(--ink-500);">
@@ -36,12 +36,12 @@ function changePasswordSectionHtml(sectionHead) {
         </ul>
 
         <label style="display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink-500); margin-bottom:8px; cursor:pointer;">
-          <input type="checkbox" id="cpShow" /> Show passwords
+          <input type="checkbox" id="cpShow" /> <svg class="btn-ico" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><span>Show passwords</span>
         </label>
 
         <div class="error-text" id="cpError"></div>
         <div class="fp-success-text" id="cpSuccess"></div>
-        <button type="submit" class="btn btn-primary" id="cpSubmit" style="margin-top:8px;">Change Password</button>
+        <button type="submit" class="btn btn-primary" id="cpSubmit" style="margin-top:8px;"><svg class="btn-ico" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3M14 9l2 2"/></svg><span>Change Password</span></button>
       </form>
     </div>
   `;
@@ -89,7 +89,8 @@ function attachChangePasswordHandlers(user) {
     document.querySelectorAll('#cpRules li').forEach((li) => {
       const ok = rules[li.dataset.rule](nw.value);
       li.style.color = ok ? '#3fbf6f' : '';
-      li.textContent = (ok ? '✓ ' : '• ') + li.textContent.replace(/^[✓•]\s*/, '');
+      if (!li.dataset.label) li.dataset.label = li.textContent.replace(/^[✓•]\s*/, '').trim();
+      li.innerHTML = (ok ? '<svg class="rule-ico" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg>' : '<svg class="rule-ico" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/></svg>') + '<span>' + li.dataset.label + '</span>';
     });
   }
   nw.addEventListener('input', paintRules);
@@ -127,7 +128,7 @@ function attachChangePasswordHandlers(user) {
     }
 
     btn.disabled = true;
-    const label = btn.textContent;
+    const label = btn.innerHTML;
     btn.textContent = 'Saving...';
     try {
       const res = await changePasswordViaApi(user.roll_no, cur.value, nw.value, conf.value);
@@ -140,7 +141,7 @@ function attachChangePasswordHandlers(user) {
       errBox.textContent = err.message || 'Could not change the password.';
     } finally {
       btn.disabled = false;
-      btn.textContent = label;
+      btn.innerHTML = label;
     }
   });
 }

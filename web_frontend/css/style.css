@@ -1767,3 +1767,331 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
 .duty-card-title h2 { font-size: 20px; color: var(--ink-100); margin: 0; }
 .duty-card-title p { color: var(--ink-500); font-size: 13px; margin: 2px 0 0; }
 .duty-card-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-left: auto; }
+
+/* =====================================================================
+   Duty-type colours on the admin Home page
+   Same palette as the Flutter app (lib/theme.dart -> DutyStyle):
+     Day Duty   accent  light #C5811F | dark #E8A33D   soft  light #FBE9CF | dark #2A2433
+     Night Duty accent  light #4C5BD4 | dark #9AA6FF   soft  light #E8EBFA | dark #1B2140
+   admin.js sets <html data-duty="day|night"> only while Home is open, so the
+   other admin pages keep the normal amber look. Because the whole UI reads
+   --amber / --amber-dark / --amber-soft, overriding them recolours the active
+   sidebar item, stat numbers, duty switch, buttons, focus rings, etc.
+   ===================================================================== */
+:root[data-duty="day"] {
+  --amber: #e8a33d;
+  --amber-dark: #c5811f;
+  --amber-soft: rgba(232, 163, 61, 0.14);
+  --duty-soft: #2a2433;
+  --on-accent: #1a1205;
+}
+:root[data-duty="day"][data-theme="light"] {
+  --amber: #c5811f;
+  --amber-dark: #a96d14;
+  --amber-soft: rgba(197, 129, 31, 0.14);
+  --duty-soft: #fbe9cf;
+  --on-accent: #ffffff;
+}
+:root[data-duty="night"] {
+  --amber: #9aa6ff;
+  --amber-dark: #7d8af0;
+  --amber-soft: rgba(154, 166, 255, 0.16);
+  --duty-soft: #1b2140;
+  --on-accent: #0f1530;
+}
+:root[data-duty="night"][data-theme="light"] {
+  --amber: #4c5bd4;
+  --amber-dark: #3a47b0;
+  --amber-soft: rgba(76, 91, 212, 0.12);
+  --duty-soft: #e8ebfa;
+  --on-accent: #ffffff;
+}
+
+/* Elements that had hard-coded amber instead of the variable */
+:root[data-duty] .dash-icon.tone-amber { background: var(--amber-soft); color: var(--amber); }
+:root[data-duty] .duty-switch-btn.active { background: var(--amber); color: var(--on-accent); }
+:root[data-duty] .btn-primary { color: var(--on-accent); }
+
+/* Banner-style heading for the scanned-data card (mobile: tinted duty strip) */
+:root[data-duty] .duty-head {
+  background: var(--duty-soft);
+  border: 1px solid var(--amber-soft);
+  border-left: 4px solid var(--amber);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+:root[data-duty] .duty-head #recentScansHeading { color: var(--amber); }
+
+/* Table header accent + soft hover */
+:root[data-duty] .recent-scans-table thead th { border-bottom-color: var(--amber); }
+
+/* Smooth colour change when switching Day <-> Night */
+:root[data-duty] .dash-num,
+:root[data-duty] .duty-switch-btn,
+:root[data-duty] .nav-link,
+:root[data-duty] .duty-head { transition: background-color .2s ease, color .2s ease, border-color .2s ease; }
+
+/* =====================================================================
+   Duty-type colours inside Assign Duty -> "Assign Duty to Guard"
+   Same palette as the Home page / Flutter app (DutyStyle). admin.js sets
+   data-duty="day|night" on #tab-assignDuty once a duty type is picked, so the
+   colours stay inside this panel (tabs, sidebar etc. are untouched).
+   ===================================================================== */
+#tab-assignDuty[data-duty="day"] {
+  --amber: #e8a33d; --amber-dark: #c5811f; --amber-soft: rgba(232, 163, 61, 0.14);
+  --duty-soft: #2a2433; --on-accent: #1a1205;
+}
+:root[data-theme="light"] #tab-assignDuty[data-duty="day"] {
+  --amber: #c5811f; --amber-dark: #a96d14; --amber-soft: rgba(197, 129, 31, 0.14);
+  --duty-soft: #fbe9cf; --on-accent: #ffffff;
+}
+#tab-assignDuty[data-duty="night"] {
+  --amber: #9aa6ff; --amber-dark: #7d8af0; --amber-soft: rgba(154, 166, 255, 0.16);
+  --duty-soft: #1b2140; --on-accent: #0f1530;
+}
+:root[data-theme="light"] #tab-assignDuty[data-duty="night"] {
+  --amber: #4c5bd4; --amber-dark: #3a47b0; --amber-soft: rgba(76, 91, 212, 0.12);
+  --duty-soft: #e8ebfa; --on-accent: #ffffff;
+}
+
+/* Duty type picker (the circled box): tinted card, accent border and text */
+#tab-assignDuty[data-duty] .duty-type-card {
+  background: var(--duty-soft);
+  border-color: var(--amber);
+}
+#tab-assignDuty[data-duty] #assignDutyType {
+  border-color: var(--amber);
+  color: var(--amber);
+  font-weight: 700;
+  background-color: var(--duty-soft);
+}
+#tab-assignDuty[data-duty] #assignDutyRangeNote { color: var(--ink-300); }
+#tab-assignDuty[data-duty] #assignDutyRangeNote b { color: var(--amber); }
+
+/* Board: places, guards and the duty cards follow the duty colour */
+#tab-assignDuty[data-duty] .assign-item:not(.used):hover { border-color: var(--amber); }
+#tab-assignDuty[data-duty] .assign-dropzone { border-color: var(--amber-soft); }
+#tab-assignDuty[data-duty] .assign-dropzone.drag-over { background: var(--amber-soft); }
+#tab-assignDuty[data-duty] .assign-section-title { color: var(--amber); }
+#tab-assignDuty[data-duty] .duty-mini-card { border-color: var(--amber-soft); }
+#tab-assignDuty[data-duty] .duty-mini-card .mini-guard-slot.filled { border-color: var(--amber); }
+/* "Already assigned" cards: were green, now Day amber / Night indigo */
+#tab-assignDuty[data-duty] .duty-mini-card.existing-duty {
+  border-color: var(--amber);
+  background: var(--duty-soft);
+}
+#tab-assignDuty[data-duty] .duty-mini-card .existing-badge:not(.new-badge) { color: var(--amber); }
+#tab-assignDuty[data-duty] .duty-mini-card .existing-badge:not(.new-badge) .duty-no {
+  background: var(--amber-soft); color: var(--amber);
+}
+#tab-assignDuty[data-duty] #previewAssignBtn { border-color: var(--amber); color: var(--amber); }
+#tab-assignDuty[data-duty] #previewAssignBtn:hover { background: var(--amber); color: var(--on-accent); }
+#tab-assignDuty[data-duty] #assignDutyType,
+#tab-assignDuty[data-duty] .duty-type-card,
+#tab-assignDuty[data-duty] .duty-mini-card { transition: background-color .2s ease, color .2s ease, border-color .2s ease; }
+
+/* =====================================================================
+   Duty-type colours inside Assign Duty -> "Show Assigned Duties"
+   data-duty="day|night" is set on #tab-showAssigned when the duty type
+   filter (the circled dropdown) is chosen.
+   ===================================================================== */
+#tab-showAssigned[data-duty="day"] {
+  --amber: #e8a33d; --amber-dark: #c5811f; --amber-soft: rgba(232, 163, 61, 0.14);
+  --duty-soft: #2a2433; --on-accent: #1a1205;
+}
+:root[data-theme="light"] #tab-showAssigned[data-duty="day"] {
+  --amber: #c5811f; --amber-dark: #a96d14; --amber-soft: rgba(197, 129, 31, 0.14);
+  --duty-soft: #fbe9cf; --on-accent: #ffffff;
+}
+#tab-showAssigned[data-duty="night"] {
+  --amber: #9aa6ff; --amber-dark: #7d8af0; --amber-soft: rgba(154, 166, 255, 0.16);
+  --duty-soft: #1b2140; --on-accent: #0f1530;
+}
+:root[data-theme="light"] #tab-showAssigned[data-duty="night"] {
+  --amber: #4c5bd4; --amber-dark: #3a47b0; --amber-soft: rgba(76, 91, 212, 0.12);
+  --duty-soft: #e8ebfa; --on-accent: #ffffff;
+}
+
+/* Duty type dropdown (circled): accent border, tinted background, accent text */
+#tab-showAssigned[data-duty] #assignedDutyTypeFilter {
+  border-color: var(--amber);
+  color: var(--amber);
+  background-color: var(--duty-soft);
+  font-weight: 700;
+}
+/* Table: accent header line, duty type text, date badge, soft row hover */
+#tab-showAssigned[data-duty] thead th { border-bottom-color: var(--amber); }
+#tab-showAssigned[data-duty] td.duty-type-cell { color: var(--amber); font-weight: 700; }
+#tab-showAssigned[data-duty] .badge-amber { background: var(--amber-soft); color: var(--amber); }
+#tab-showAssigned[data-duty] tbody tr:hover { background: var(--duty-soft); }
+#tab-showAssigned[data-duty] .chip { border-color: var(--amber-soft); }
+/* Toolbar controls pick up the accent */
+#tab-showAssigned[data-duty] #assignedDateFilter:focus,
+#tab-showAssigned[data-duty] #assignedSearchInput:focus { border-color: var(--amber); }
+#tab-showAssigned[data-duty] .btn-outline:not(:disabled):hover { border-color: var(--amber); color: var(--amber); }
+#tab-showAssigned[data-duty] #assignedDutyTypeFilter,
+#tab-showAssigned[data-duty] tbody tr,
+#tab-showAssigned[data-duty] td.duty-type-cell { transition: background-color .2s ease, color .2s ease, border-color .2s ease; }
+
+/* =====================================================================
+   Duty-type colours inside Assign Duty -> "Set Scan Time"
+   Each card carries data-duty="day|night" (set in the template), so Day Duty
+   is amber with a sun and Night Duty is indigo with a moon.
+   ===================================================================== */
+.scan-time-card[data-duty="day"] {
+  --amber: #e8a33d; --amber-dark: #c5811f; --amber-soft: rgba(232, 163, 61, 0.14);
+  --duty-soft: #2a2433; --on-accent: #1a1205;
+}
+:root[data-theme="light"] .scan-time-card[data-duty="day"] {
+  --amber: #c5811f; --amber-dark: #a96d14; --amber-soft: rgba(197, 129, 31, 0.14);
+  --duty-soft: #fbe9cf; --on-accent: #ffffff;
+}
+.scan-time-card[data-duty="night"] {
+  --amber: #9aa6ff; --amber-dark: #7d8af0; --amber-soft: rgba(154, 166, 255, 0.16);
+  --duty-soft: #1b2140; --on-accent: #0f1530;
+}
+:root[data-theme="light"] .scan-time-card[data-duty="night"] {
+  --amber: #4c5bd4; --amber-dark: #3a47b0; --amber-soft: rgba(76, 91, 212, 0.12);
+  --duty-soft: #e8ebfa; --on-accent: #ffffff;
+}
+
+.scan-time-card[data-duty] {
+  border-color: var(--amber-soft);
+  border-top: 3px solid var(--amber);
+}
+/* Title strip (the circled heading): tinted background, accent icon + text */
+.scan-time-card .scan-time-title {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--duty-soft);
+  border-left: 4px solid var(--amber);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: var(--amber);
+  font-size: 16px;
+}
+.scan-time-card .scan-time-title svg { flex: none; }
+/* "Current window: ..." line */
+.scan-time-card [id$="Current"] { color: var(--amber) !important; font-weight: 600; }
+/* Time pickers and Submit */
+.scan-time-card select { border-color: var(--amber-soft); }
+.scan-time-card select:focus { border-color: var(--amber); outline: none; }
+.scan-time-card .btn-primary { background: var(--amber); color: var(--on-accent); }
+.scan-time-card .btn-primary:hover { background: var(--amber-dark); }
+
+/* Sun / moon icons on the Home Day Duty / Night Duty switch (same icons as the mobile app) */
+.duty-switch-btn { display: inline-flex; align-items: center; gap: 6px; }
+.duty-switch-btn .duty-ico { flex: none; }
+@media (max-width: 520px) { .duty-switch-btn { gap: 4px; } .duty-switch-btn .duty-ico { width: 13px; height: 13px; } }
+
+/* Icons on the Images page: tabs (Upload Image / Get Upload Images) and the
+   Pick Image / Upload buttons */
+.tab-btn { display: inline-flex; align-items: center; gap: 7px; }
+.tab-btn .btn-ico { flex: none; }
+#tab-uploadImage .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+#tab-uploadImage .btn .btn-ico { flex: none; }
+
+/* =====================================================================
+   Security Data -> Add Security: icons (tabs, card titles, fields, buttons)
+   ===================================================================== */
+/* Icons inside selects (Role, Gender): left icon + custom chevron on the right */
+.input-icon select { padding-left: 42px; padding-right: 38px; appearance: none; -webkit-appearance: none; cursor: pointer; }
+.input-icon.has-select::after {
+  content: '';
+  position: absolute; right: 16px; top: 50%;
+  width: 7px; height: 7px;
+  border-right: 2px solid var(--ink-500); border-bottom: 2px solid var(--ink-500);
+  transform: translateY(-70%) rotate(45deg);
+  pointer-events: none;
+}
+.input-icon.has-select:focus-within::after { border-color: var(--amber); }
+.input-icon .eye-on, .input-icon .eye-off { display: inline-flex; }
+.input-icon .field-icon { z-index: 1; }
+
+/* Card titles: small tinted icon badge + heading (New account / Bulk upload) */
+.sec-title { display: flex; align-items: center; gap: 12px; font-size: 17px; margin-bottom: 18px; }
+.sec-badge {
+  width: 34px; height: 34px; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 9px;
+  border: 1px solid transparent;
+}
+.sec-badge.tone-amber { background: var(--amber-soft); color: var(--amber); border-color: rgba(232,163,61,0.35); }
+.sec-badge.tone-teal  { background: rgba(45,190,200,0.14); color: #3cc7d4; border-color: rgba(45,190,200,0.35); }
+:root[data-theme="light"] .sec-badge.tone-teal { color: #0f8f9c; }
+
+/* Bulk upload row: Download template, Choose File + file name, Upload CSV */
+.bulk-upload-box .row { gap: 12px; }
+.csv-file-name { color: var(--ink-500); font-size: 13px; flex: 1; min-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Icon spacing for the buttons on this tab (shared .btn-ico) */
+#tab-addSecurity .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+#tab-addSecurity .btn .btn-ico { flex: none; }
+#tab-addSecurity #newGuardAvatarPreview { border: 1px solid var(--amber); background: var(--amber-soft); color: var(--amber); font-size: 22px; }
+
+/* =====================================================================
+   Duty Places: icons on tabs, card titles, fields and buttons
+   ===================================================================== */
+/* Square "+" buttons next to the sub place inputs */
+#addSubPlaceBtn, #addNewSubPlaceBtn {
+  width: 46px; height: 46px; padding: 0; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+#addSubPlaceBtn .btn-ico, #addNewSubPlaceBtn .btn-ico { flex: none; }
+#tab-newPlace .btn, #tab-addSubPlaces .btn, #tab-generateQr .btn, #tab-existingPlaces .btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+}
+#tab-newPlace .btn .btn-ico, #tab-addSubPlaces .btn .btn-ico,
+#tab-generateQr .btn .btn-ico, #tab-existingPlaces .btn .btn-ico { flex: none; }
+/* Disabled selects (Sub place before a main place is chosen) keep the icon dimmed */
+.input-icon:has(select:disabled) .field-icon,
+.input-icon:has(input:disabled) .field-icon { opacity: .5; }
+
+/* =====================================================================
+   Assign Duty: icons on tabs, card titles, fields and buttons
+   ===================================================================== */
+#tab-assignDuty .btn, #tab-showAssigned .btn, #tab-scanTime .btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+}
+#tab-assignDuty .btn .btn-ico, #tab-showAssigned .btn .btn-ico, #tab-scanTime .btn .btn-ico { flex: none; }
+/* Duty type / date pickers with a leading icon (icon follows the duty colour) */
+#tab-assignDuty .input-icon .field-icon svg { display: block; }
+#tab-assignDuty[data-duty] .input-icon .field-icon { color: var(--amber); }
+#tab-assignDuty .input-icon input[type="date"] { padding-left: 42px; }
+/* Column cards: badge icons use the duty accent once a duty type is picked */
+#tab-assignDuty .sec-title { font-size: 16px; margin-bottom: 12px; }
+#tab-assignDuty .sec-badge { width: 30px; height: 30px; }
+/* Magnifier icon inside the search boxes (the clear "x" is added by search-clear.js) */
+#tab-assignDuty input.mini-search,
+#tab-showAssigned .search-field input { padding-left: 38px; }
+#tab-assignDuty .clear-wrap:has(> input.mini-search)::before,
+#tab-showAssigned .clear-wrap:has(> input)::before {
+  content: '';
+  position: absolute; left: 12px; top: 50%; width: 16px; height: 16px;
+  transform: translateY(-50%);
+  background-color: var(--ink-500);
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'><circle cx='11' cy='11' r='7'/><path d='M20 20l-3.5-3.5'/></svg>") center / contain no-repeat;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'><circle cx='11' cy='11' r='7'/><path d='M20 20l-3.5-3.5'/></svg>") center / contain no-repeat;
+  pointer-events: none; z-index: 1;
+}
+#tab-assignDuty .clear-wrap:has(> input.mini-search):focus-within::before,
+#tab-showAssigned .clear-wrap:has(> input):focus-within::before { background-color: var(--amber); }
+
+/* Show Assigned Duties: duty type filter with a sun / moon icon that follows the choice */
+.data-toolbar .toolbar-select { width: auto; min-width: 170px; }
+.data-toolbar .toolbar-select select { padding-top: 10px; padding-bottom: 10px; }
+.data-toolbar .toolbar-select .field-icon svg { display: block; }
+#tab-showAssigned[data-duty] .toolbar-select .field-icon { color: var(--amber); }
+
+/* =====================================================================
+   Personal Data: icons (tabs, Change Photo, Change Password form)
+   ===================================================================== */
+#tab-accProfile .btn, #cpForm .btn, #cpForm label { align-items: center; }
+#tab-accProfile .btn, #cpForm .btn { display: inline-flex; justify-content: center; gap: 8px; }
+#cpForm .btn { width: 100%; }
+#tab-accProfile .btn .btn-ico, #cpForm .btn-ico { flex: none; }
+/* Password rules: check-circle turns green when met, hollow circle otherwise */
+#cpRules li { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+#cpRules li .rule-ico { flex: none; }
+#cpRules li { transition: color .15s ease; }
+/* "Show passwords" checkbox row */
+#cpForm label[style*="cursor:pointer"] { display: flex; }
