@@ -1786,10 +1786,12 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
   --on-accent: #1a1205;
 }
 :root[data-duty="day"][data-theme="light"] {
-  --amber: #c5811f;
-  --amber-dark: #a96d14;
-  --amber-soft: rgba(197, 129, 31, 0.14);
-  --duty-soft: #fbe9cf;
+  /* Darker amber + paler peach than the app icon colours: amber text on the
+     banner was only 2.7:1 (hard to read); this gives 4.6:1+ and less glare. */
+  --amber: #915f17;
+  --amber-dark: #7a4f10;
+  --amber-soft: rgba(145, 95, 23, 0.12);
+  --duty-soft: #fdf1de;
   --on-accent: #ffffff;
 }
 :root[data-duty="night"] {
@@ -1842,8 +1844,8 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
   --duty-soft: #2a2433; --on-accent: #1a1205;
 }
 :root[data-theme="light"] #tab-assignDuty[data-duty="day"] {
-  --amber: #c5811f; --amber-dark: #a96d14; --amber-soft: rgba(197, 129, 31, 0.14);
-  --duty-soft: #fbe9cf; --on-accent: #ffffff;
+  --amber: #915f17; --amber-dark: #7a4f10; --amber-soft: rgba(145, 95, 23, 0.12);
+  --duty-soft: #fdf1de; --on-accent: #ffffff;
 }
 #tab-assignDuty[data-duty="night"] {
   --amber: #9aa6ff; --amber-dark: #7d8af0; --amber-soft: rgba(154, 166, 255, 0.16);
@@ -1894,8 +1896,8 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
   --duty-soft: #2a2433; --on-accent: #1a1205;
 }
 :root[data-theme="light"] #tab-showAssigned[data-duty="day"] {
-  --amber: #c5811f; --amber-dark: #a96d14; --amber-soft: rgba(197, 129, 31, 0.14);
-  --duty-soft: #fbe9cf; --on-accent: #ffffff;
+  --amber: #915f17; --amber-dark: #7a4f10; --amber-soft: rgba(145, 95, 23, 0.12);
+  --duty-soft: #fdf1de; --on-accent: #ffffff;
 }
 #tab-showAssigned[data-duty="night"] {
   --amber: #9aa6ff; --amber-dark: #7d8af0; --amber-soft: rgba(154, 166, 255, 0.16);
@@ -1935,8 +1937,8 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
   --duty-soft: #2a2433; --on-accent: #1a1205;
 }
 :root[data-theme="light"] .scan-time-card[data-duty="day"] {
-  --amber: #c5811f; --amber-dark: #a96d14; --amber-soft: rgba(197, 129, 31, 0.14);
-  --duty-soft: #fbe9cf; --on-accent: #ffffff;
+  --amber: #915f17; --amber-dark: #7a4f10; --amber-soft: rgba(145, 95, 23, 0.12);
+  --duty-soft: #fdf1de; --on-accent: #ffffff;
 }
 .scan-time-card[data-duty="night"] {
   --amber: #9aa6ff; --amber-dark: #7d8af0; --amber-soft: rgba(154, 166, 255, 0.16);
@@ -2106,7 +2108,7 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
 .duty-type-badge svg { flex-shrink: 0; }
 .duty-type-badge.is-day { color: #e8a33d; background: #2a2433; border-color: #e8a33d; }
 .duty-type-badge.is-night { color: #9aa6ff; background: #1b2140; border-color: #9aa6ff; }
-:root[data-theme="light"] .duty-type-badge.is-day { color: #c5811f; background: #fbe9cf; border-color: #c5811f; }
+:root[data-theme="light"] .duty-type-badge.is-day { color: #915f17; background: #fdf1de; border-color: #915f17; }
 :root[data-theme="light"] .duty-type-badge.is-night { color: #4c5bd4; background: #e8ebfa; border-color: #4c5bd4; }
 
 /* Logs/Data filter bar: icons like the admin toolbar (filter on the dropdown, calendar on the date) */
@@ -2143,7 +2145,7 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
 .duty-confirm { max-width: 400px; text-align: center; border-color: var(--dc); }
 .duty-confirm.is-day   { --dc: #e8a33d; --dc-soft: #2a2433; --dc-on: #1a1205; }
 .duty-confirm.is-night { --dc: #9aa6ff; --dc-soft: #1b2140; --dc-on: #0f1530; }
-:root[data-theme="light"] .duty-confirm.is-day   { --dc: #c5811f; --dc-soft: #fbe9cf; --dc-on: #ffffff; }
+:root[data-theme="light"] .duty-confirm.is-day   { --dc: #915f17; --dc-soft: #fdf1de; --dc-on: #ffffff; }
 :root[data-theme="light"] .duty-confirm.is-night { --dc: #4c5bd4; --dc-soft: #e8ebfa; --dc-on: #ffffff; }
 .duty-confirm-icon {
   width: 56px; height: 56px; margin: 0 auto 12px;
@@ -2167,7 +2169,7 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
 /* Assign Duty to Guard > Preview modal: follows the duty type (Day amber / Night indigo) */
 .assign-preview.is-day   { --dc: #e8a33d; --dc-soft: rgba(232, 163, 61, 0.14); --dc-on: #1a1205; }
 .assign-preview.is-night { --dc: #9aa6ff; --dc-soft: rgba(154, 166, 255, 0.16); --dc-on: #0f1530; }
-:root[data-theme="light"] .assign-preview.is-day   { --dc: #c5811f; --dc-soft: rgba(197, 129, 31, 0.14); --dc-on: #ffffff; }
+:root[data-theme="light"] .assign-preview.is-day   { --dc: #915f17; --dc-soft: rgba(145, 95, 23, 0.12); --dc-on: #ffffff; }
 :root[data-theme="light"] .assign-preview.is-night { --dc: #4c5bd4; --dc-soft: rgba(76, 91, 212, 0.12); --dc-on: #ffffff; }
 .modal-box:has(.assign-preview) { border-color: var(--dc-border, var(--navy-line)); }
 .modal-box:has(.assign-preview.is-day)   { --dc-border: #e8a33d; }
