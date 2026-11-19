@@ -200,10 +200,10 @@ function reminderText() {
     .map((type) => {
       const w = windowFor(type);
       return w
-        ? `${type}: scan between ${range(w)}`
-        : `${type}: the admin has not set a QR scan time yet.`;
+        ? `${dutyTypeBadge(type)} scan between ${range(w)}`
+        : `${dutyTypeBadge(type)} the admin has not set a QR scan time yet.`;
     });
-  return lines.join('<br>');
+  return `<span class="reminder-row">${lines.map((l) => `<span class="reminder-item">${l}</span>`).join('')}</span>`;
 }
 let dutyLoadSeq = 0; // ignore out-of-order responses if the guard clicks around quickly
 
@@ -335,12 +335,26 @@ function subPlaceChip(sp) {
   return `<span class="chip">${icon} ${esc(sp.name)}</span>`;
 }
 
+// Day Duty = amber sun badge, Night Duty = indigo moon badge, so a guard can
+// tell the two apart at a glance.
+const PH_ICON = `<svg class="ph-ico" viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg>`;
+const DUTY_ICON_ATTRS = 'viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
+const DUTY_TYPE_ICON = {
+  day: `<svg ${DUTY_ICON_ATTRS}><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>`,
+  night: `<svg ${DUTY_ICON_ATTRS}><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg>`
+};
+function dutyTypeBadge(type) {
+  const t = type || 'Night Duty';
+  const kind = t === 'Day Duty' ? 'day' : 'night';
+  return `<span class="duty-type-badge is-${kind}">${DUTY_TYPE_ICON[kind]}<span>${esc(t)}</span></span>`;
+}
+
 function dutyRow(d, serial) {
   return `
     <tr>
       <td class="serial-col">${serial}</td>
       <td style="white-space:nowrap;">${esc(prettyRange(d.dateRange))}</td>
-      <td style="white-space:nowrap;">${esc(d.dutyType || 'Night Duty')}</td>
+      <td style="white-space:nowrap;">${dutyTypeBadge(d.dutyType)}</td>
       <td>${STATUS_BADGE[d.status] || ''}</td>
       <td class="preserve-space">${esc(d.mainPlace)}</td>
       <td>${(d.subPlaces || []).map(subPlaceChip).join('')}</td>
@@ -431,25 +445,25 @@ const renderers = {
     ${sectionHead('Images', 'Upload site-visit photo evidence and review the photos you have submitted.')}
 
     <div class="tabs" id="imagesTabs">
-      <button class="tab-btn active" data-tab="uploadImage" type="button">Upload Images</button>
-      <button class="tab-btn" data-tab="getImages" type="button">Get Images</button>
+      <button class="tab-btn active" data-tab="uploadImage" type="button"><svg class="btn-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3"/></svg><span>Upload Images</span></button>
+      <button class="tab-btn" data-tab="getImages" type="button"><svg class="btn-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><path d="M13 21l4-5 4 5z"/></svg><span>Get Images</span></button>
     </div>
 
     <div class="tab-panel" id="tab-uploadImage">
       <div class="card" style="max-width:420px;">
-        <div class="image-tile" style="margin-bottom:14px;"><div class="ph" style="height:160px;">🖼</div></div>
+        <div class="image-tile" style="margin-bottom:14px;"><div class="ph" style="height:160px;"><svg class="ph-ico" viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg></div></div>
         <input type="file" id="imageFileInput" accept=".jpg,.jpeg,.png,image/jpeg,image/png" style="display:none;">
         <div style="display:flex; gap:10px;">
-          <button class="btn btn-outline" id="pickImgBtn" style="flex:1;">Pick Image</button>
+          <button class="btn btn-outline" id="pickImgBtn" style="flex:1;"><svg class="btn-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg><span>Pick Image</span></button>
         </div>
         <div class="field" style="margin-top:14px;">
-          <label>Comment <span style="color:var(--amber);">*</span></label>
+          <label style="display:flex; align-items:center; gap:7px;"><svg class="" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 01-11.6 7.1L4 20l1-4.6A8 8 0 1121 12z"/><path d="M8.5 11h7M8.5 14h4"/></svg><span>Comment <span style="color:var(--amber);">*</span></span></label>
           <textarea id="imageCommentInput" rows="3" maxlength="500" placeholder="Describe what this photo shows (required, min 3 characters)"></textarea>
           <div style="display:flex; justify-content:flex-end; margin-top:4px;">
             <span id="imageCommentCount" style="font-size:11px; color:var(--ink-500);">0 / 500</span>
           </div>
         </div>
-        <button class="btn btn-primary" id="uploadImgBtn" style="width:100%;" disabled>Upload</button>
+        <button class="btn btn-primary" id="uploadImgBtn" style="width:100%;" disabled><svg class="btn-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3"/></svg><span>Upload</span></button>
         <div class="error-text" id="imageUploadError"></div>
         <p style="color:var(--ink-500); font-size:11.5px; margin-top:8px;">
           Accepted formats: JPG, JPEG, PNG only. Size must be between 10 KB and 2 MB. Comment must be 3-500 characters.
@@ -469,11 +483,11 @@ const renderers = {
     <div class="card">
       <div class="data-toolbar">
         <div class="toolbar-right" style="margin-left:0; gap:10px; flex-wrap:wrap;">
-          <select id="logsFilter">
+          <div class="input-icon has-select toolbar-select logs-filter-field"><span class="field-icon" style="display:flex;"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></span><select id="logsFilter">
             <option value="date" selected>Date</option>
             <option value="all">All</option>
-          </select>
-          <input type="date" id="logsDate" value="${todayISODate()}" max="${todayISODate()}">
+          </select></div>
+          <div class="input-icon logs-date-field" id="logsDateField"><span class="field-icon" style="display:flex;"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span><input type="date" id="logsDate" value="${todayISODate()}" max="${todayISODate()}"></div>
         </div>
         <div class="toolbar-right" style="margin-left:auto;">
           <span id="logsSummary" style="font-size:12.5px; color:var(--ink-500);"></span>
@@ -524,8 +538,8 @@ renderers.account = () => {
   return `
     ${sectionHead('Personal Data', 'Your profile details and password.')}
     <div class="tabs" id="accountTabs">
-      <button class="tab-btn active" data-tab="accProfile" type="button">Profile</button>
-      <button class="tab-btn" data-tab="accPassword" type="button">Change Password</button>
+      <button class="tab-btn active" data-tab="accProfile" type="button"><svg class="btn-ico" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 016-6h4a6 6 0 016 6v1"/></svg><span>Profile</span></button>
+      <button class="tab-btn" data-tab="accPassword" type="button"><svg class="btn-ico" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3M14 9l2 2"/></svg><span>Change Password</span></button>
     </div>
     <div class="tab-panel" id="tab-accProfile">${strip(renderers.profile())}</div>
     <div class="tab-panel" id="tab-accPassword" style="display:none;">${strip(renderers.changePassword())}</div>
@@ -815,7 +829,7 @@ pdfBtn.addEventListener('click', async () => {
           ? `<td class="serial-col grp-first" rowspan="${r.span}" style="vertical-align:top;">${r.groupIndex}</td>
              <td class="preserve-space" rowspan="${r.span}" style="vertical-align:top;">${esc(r.group.mainPlace)}</td>
              <td rowspan="${r.span}" style="vertical-align:top; white-space:nowrap;">${esc(prettyRange(r.group.dateRange))}</td>
-             <td rowspan="${r.span}" style="vertical-align:top; white-space:nowrap;">${esc(r.group.dutyType || 'Night Duty')}</td>`
+             <td rowspan="${r.span}" style="vertical-align:top; white-space:nowrap;">${dutyTypeBadge(r.group.dutyType)}</td>`
           : '';
         return `<tr${zebra}>${merged}
           <td class="serial-col">${r.subIndex}</td>
@@ -847,7 +861,7 @@ pdfBtn.addEventListener('click', async () => {
     async function loadLogs() {
       const seq = ++logsSeq;
       const byDate = filterSel.value === 'date';
-      dateInput.style.display = byDate ? '' : 'none'; // "All" -> no date picker
+      document.getElementById('logsDateField').style.display = byDate ? '' : 'none'; // "All" -> no date picker
 
       // Date mode needs a valid date: an empty/partial picker falls back to
       // today, and a future date is clamped to today.
@@ -1024,7 +1038,7 @@ pdfBtn.addEventListener('click', async () => {
     function resetSelection() {
       selectedFile = null;
       fileInput.value = '';
-      previewTile.innerHTML = '🖼';
+      previewTile.innerHTML = PH_ICON;
       refreshUploadButton();
     }
 
@@ -1101,7 +1115,7 @@ pdfBtn.addEventListener('click', async () => {
       errBox.textContent = '';
       uploadBtn.disabled = true;
       pickBtn.disabled = true;
-      uploadBtn.textContent = 'Uploading...';
+      uploadBtn.querySelector('span').textContent = 'Uploading...';
       try {
         await uploadImageViaApi({
           file: selectedFile,
@@ -1109,7 +1123,7 @@ pdfBtn.addEventListener('click', async () => {
           guardEmpId: user.roll_no,
           guardName: user.first_name,
         });
-        alert('Image uploaded successfully.');
+        await appAlert({ title: 'Image uploaded', message: 'Your image was uploaded successfully.', kind: 'success' });
         resetSelection();
         commentInput.value = '';
         updateCommentCount();
@@ -1117,7 +1131,7 @@ pdfBtn.addEventListener('click', async () => {
         errBox.textContent = err.message || 'Could not upload the image.';
         refreshUploadButton();
       } finally {
-        uploadBtn.textContent = 'Upload';
+        uploadBtn.querySelector('span').textContent = 'Upload';
         pickBtn.disabled = false;
       }
     });

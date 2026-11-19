@@ -2095,3 +2095,122 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
 #cpRules li { transition: color .15s ease; }
 /* "Show passwords" checkbox row */
 #cpForm label[style*="cursor:pointer"] { display: flex; }
+
+
+/* Duty type badges (guard pages) - same colours as the admin Assign Duty page:
+   Day = amber sun (#e8a33d), Night = indigo moon (#9aa6ff) */
+.duty-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px 4px 9px;
+  border-radius: 20px;
+  border: 1px solid transparent;
+  font-size: 12.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.duty-type-badge svg { flex-shrink: 0; }
+.duty-type-badge.is-day { color: #e8a33d; background: #2a2433; border-color: #e8a33d; }
+.duty-type-badge.is-night { color: #9aa6ff; background: #1b2140; border-color: #9aa6ff; }
+:root[data-theme="light"] .duty-type-badge.is-day { color: #c5811f; background: #fbe9cf; border-color: #c5811f; }
+:root[data-theme="light"] .duty-type-badge.is-night { color: #4c5bd4; background: #e8ebfa; border-color: #4c5bd4; }
+
+/* Logs/Data filter bar: icons like the admin toolbar (filter on the dropdown, calendar on the date) */
+.logs-filter-field .field-icon svg, .logs-date-field .field-icon svg { display: block; }
+.logs-filter-field select { min-width: 110px; }
+.data-toolbar .logs-date-field input[type="date"] { padding-left: 42px; }
+.logs-date-field:focus-within .field-icon { color: var(--amber); }
+
+/* Logs/Data filter fixes: dropdown fills its wrapper (chevron sits inside the box), and the
+   browser's own calendar icon is hidden - our left icon is the only one; clicking the field still opens the picker */
+.data-toolbar .logs-filter-field { width: auto; min-width: 130px; }
+.data-toolbar .logs-filter-field select { width: 100%; }
+.data-toolbar .logs-date-field input[type="date"] { position: relative; padding-right: 14px; }
+.data-toolbar .logs-date-field input[type="date"]::-webkit-calendar-picker-indicator {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  opacity: 0; cursor: pointer; margin: 0; padding: 0;
+}
+
+/* Guard Images page: icons in tabs, buttons and the empty preview tile */
+#tab-uploadImage .image-tile .ph { display: flex; align-items: center; justify-content: center; color: var(--ink-500); }
+#tab-uploadImage .image-tile .ph .ph-ico { opacity: .75; }
+#tab-uploadImage label svg { color: var(--ink-500); flex: none; }
+#tab-uploadImage .btn-primary:disabled .btn-ico { opacity: .8; }
+
+/* Guard Home reminder: Day Duty and Night Duty scan times on a single line (wraps only on narrow screens) */
+.reminder-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 0; }
+.reminder-item { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.reminder-item + .reminder-item { margin-left: 22px; padding-left: 22px; border-left: 1px solid var(--navy-line); }
+@media (max-width: 700px) {
+  .reminder-item + .reminder-item { margin-left: 0; padding-left: 0; border-left: none; width: 100%; }
+}
+
+/* Remove-duty confirmation (Assign Duty > Show Assigned Duties): themed by duty type */
+.duty-confirm { max-width: 400px; text-align: center; border-color: var(--dc); }
+.duty-confirm.is-day   { --dc: #e8a33d; --dc-soft: #2a2433; --dc-on: #1a1205; }
+.duty-confirm.is-night { --dc: #9aa6ff; --dc-soft: #1b2140; --dc-on: #0f1530; }
+:root[data-theme="light"] .duty-confirm.is-day   { --dc: #c5811f; --dc-soft: #fbe9cf; --dc-on: #ffffff; }
+:root[data-theme="light"] .duty-confirm.is-night { --dc: #4c5bd4; --dc-soft: #e8ebfa; --dc-on: #ffffff; }
+.duty-confirm-icon {
+  width: 56px; height: 56px; margin: 0 auto 12px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; color: var(--dc); background: var(--dc-soft); border: 1px solid var(--dc);
+}
+.duty-confirm h3 { margin: 0 0 8px; }
+.duty-confirm-type {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 12px 3px 9px; border-radius: 20px; margin-bottom: 12px;
+  font-size: 12.5px; font-weight: 700; color: var(--dc); background: var(--dc-soft); border: 1px solid var(--dc);
+}
+.duty-confirm p { color: var(--ink-300); font-size: 14px; line-height: 1.6; margin: 0 0 20px; }
+.duty-confirm p b { color: var(--ink-100); }
+.duty-confirm-actions { display: flex; gap: 10px; justify-content: center; }
+.duty-confirm-actions .btn { flex: 1 1 0; width: auto; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.duty-confirm-actions .btn-outline:hover { border-color: var(--dc); color: var(--dc); }
+.duty-confirm-yes { background: var(--dc); border-color: var(--dc); color: var(--dc-on); font-weight: 700; }
+.duty-confirm-yes:hover { filter: brightness(1.1); }
+
+/* Assign Duty to Guard > Preview modal: follows the duty type (Day amber / Night indigo) */
+.assign-preview.is-day   { --dc: #e8a33d; --dc-soft: rgba(232, 163, 61, 0.14); --dc-on: #1a1205; }
+.assign-preview.is-night { --dc: #9aa6ff; --dc-soft: rgba(154, 166, 255, 0.16); --dc-on: #0f1530; }
+:root[data-theme="light"] .assign-preview.is-day   { --dc: #c5811f; --dc-soft: rgba(197, 129, 31, 0.14); --dc-on: #ffffff; }
+:root[data-theme="light"] .assign-preview.is-night { --dc: #4c5bd4; --dc-soft: rgba(76, 91, 212, 0.12); --dc-on: #ffffff; }
+.modal-box:has(.assign-preview) { border-color: var(--dc-border, var(--navy-line)); }
+.modal-box:has(.assign-preview.is-day)   { --dc-border: #e8a33d; }
+.modal-box:has(.assign-preview.is-night) { --dc-border: #9aa6ff; }
+:root[data-theme="light"] .modal-box:has(.assign-preview.is-day)   { --dc-border: #c5811f; }
+:root[data-theme="light"] .modal-box:has(.assign-preview.is-night) { --dc-border: #4c5bd4; }
+.assign-preview-title { display: flex; align-items: center; gap: 9px; color: var(--dc); }
+.assign-preview-title svg { flex: none; }
+.assign-preview thead th { border-bottom-color: var(--dc); }
+.assign-preview .badge-amber { background: var(--dc-soft); color: var(--dc); }
+.assign-preview input[type="checkbox"] { accent-color: var(--dc); width: 16px; height: 16px; }
+.assign-preview .btn-primary:not(:disabled) { background: var(--dc); border-color: var(--dc); color: var(--dc-on); font-weight: 700; }
+.assign-preview .btn-primary:disabled { background: var(--dc-soft); border-color: var(--dc); color: var(--dc); opacity: .55; }
+.assign-preview .btn-outline:hover { border-color: var(--dc); color: var(--dc); }
+
+/* Themed alert with no duty type chosen yet: neutral amber */
+.duty-confirm.is-none { --dc: #e8a33d; --dc-soft: #2a2433; --dc-on: #1a1205; }
+:root[data-theme="light"] .duty-confirm.is-none { --dc: #c5811f; --dc-soft: #fbe9cf; --dc-on: #ffffff; }
+.duty-confirm-actions .duty-confirm-yes:only-child { max-width: 180px; }
+
+/* appAlert() (shared admin + security): success = green, warning = amber, error = red */
+.duty-confirm.is-success { --dc: #4caf6d; --dc-soft: rgba(76, 175, 109, 0.14); --dc-on: #0b1a10; }
+.duty-confirm.is-warning { --dc: #e8a33d; --dc-soft: rgba(232, 163, 61, 0.14); --dc-on: #1a1205; }
+.duty-confirm.is-error   { --dc: #e2574c; --dc-soft: rgba(226, 87, 76, 0.14); --dc-on: #ffffff; }
+:root[data-theme="light"] .duty-confirm.is-success { --dc: #15803d; --dc-soft: rgba(34, 197, 94, 0.14); --dc-on: #ffffff; }
+:root[data-theme="light"] .duty-confirm.is-warning { --dc: #c5811f; --dc-soft: #fbe9cf; --dc-on: #ffffff; }
+:root[data-theme="light"] .duty-confirm.is-error   { --dc: #c62828; --dc-soft: rgba(226, 87, 76, 0.12); --dc-on: #ffffff; }
+
+/* Danger theme for block / delete confirmations (success theme for unblock is defined above) */
+.duty-confirm.is-danger { --dc: #e2574c; --dc-soft: rgba(226, 87, 76, 0.14); --dc-on: #ffffff; }
+:root[data-theme="light"] .duty-confirm.is-danger { --dc: #c62828; --dc-soft: rgba(226, 87, 76, 0.12); --dc-on: #ffffff; }
+.duty-confirm.is-success .duty-confirm-yes { color: #0b1a10; }
+:root[data-theme="light"] .duty-confirm.is-success .duty-confirm-yes { color: #ffffff; }
+.modal-box .input-icon select { width: 100%; }
+
+/* Generate QR Code: the Preview card sits beside the form card (wraps under it on narrow screens) */
+.qr-layout { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px; }
+.qr-layout > .card { margin-bottom: 0; flex: 1 1 340px; }

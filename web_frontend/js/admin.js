@@ -203,6 +203,75 @@ function sectionHead(title, sub) {
   return `<div class="section-head"><h2>${title}</h2><p>${sub}</p></div>`;
 }
 
+// Themed replacement for the browser confirm(): Day Duty = amber + sun, Night Duty = indigo + moon.
+// Resolves true (Yes) or false (Cancel / Esc / click outside).
+function themedDutyConfirm({ type, title, html, yesLabel, yesIcon, showCancel = true, iconKind = 'duty', theme }) {
+  return new Promise(resolve => {
+    const isDay = type === 'Day Duty';
+    const themeClass = theme ? `is-${theme}` : (type === 'Day Duty' ? 'is-day' : (type === 'Night Duty' ? 'is-night' : 'is-none'));
+    const attrs = (n) => `viewBox="0 0 24 24" width="${n}" height="${n}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"`;
+    const SUN = '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>';
+    const MOON = '<path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/>';
+    const YES = {
+      trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12M9 7V4h6v3"/>',
+      check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+      block: '<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>',
+      unblock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 017.5-2"/>',
+    }[yesIcon || 'check'];
+    const glyph = isDay ? SUN : MOON;
+    const BIG = {
+      duty: glyph,
+      success: '<circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/>',
+      warning: '<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/>',
+      block: '<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>',
+      unblock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 017.5-2"/>',
+      trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12M9 7V4h6v3"/>',
+    }[iconKind] || glyph;
+    const typePill = type ? `<span class="duty-confirm-type"><svg ${attrs(15)}>${glyph}</svg><span>${escapeHtml(type)}</span></span>` : '';
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.style.display = 'flex';
+    overlay.innerHTML = `
+      <div class="modal-box duty-confirm ${themeClass}" role="alertdialog" aria-modal="true" aria-labelledby="dutyConfirmTitle">
+        <div class="duty-confirm-icon"><svg ${attrs(26)}>${BIG}</svg></div>
+        <h3 id="dutyConfirmTitle">${escapeHtml(title)}</h3>
+        ${typePill}
+        <p>${html}</p>
+        <div class="modal-actions duty-confirm-actions">
+          ${showCancel ? '<button type="button" class="btn btn-outline" id="dutyConfirmNo">Cancel</button>' : ''}
+          <button type="button" class="btn duty-confirm-yes" id="dutyConfirmYes"><svg ${attrs(16)}>${YES}</svg><span>${escapeHtml(yesLabel)}</span></button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const done = (v) => { document.removeEventListener('keydown', onKey); overlay.remove(); resolve(v); };
+    const onKey = (e) => { if (e.key === 'Escape') done(false); };
+    document.addEventListener('keydown', onKey);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) done(false); });
+    const noBtn = overlay.querySelector('#dutyConfirmNo');
+    if (noBtn) noBtn.addEventListener('click', () => done(false));
+    overlay.querySelector('#dutyConfirmYes').addEventListener('click', () => done(true));
+    (noBtn || overlay.querySelector('#dutyConfirmYes')).focus();
+  });
+}
+
+// Themed replacement for alert() on the Assign Duty to Guard tab. Coloured by the chosen duty type
+// (neutral amber when none is chosen yet). Resolves when the person clicks OK.
+function dutyAlert(message, kind) {
+  const sel = document.getElementById('assignDutyType');
+  const type = sel ? sel.value : '';
+  const msg = String(message);
+  const isSuccess = kind ? kind === 'success' : /saved\./i.test(msg);
+  return themedDutyConfirm({
+    type,
+    title: isSuccess ? 'Duties saved' : 'Please check',
+    html: escapeHtml(msg).replace(/\n/g, '<br>'),
+    yesLabel: 'OK',
+    yesIcon: 'check',
+    showCancel: false,
+    iconKind: isSuccess ? 'success' : 'warning',
+  });
+}
+
 function openModal(html, { maxWidth } = {}) {
   const box = document.getElementById('modalBox');
   box.innerHTML = html;
@@ -538,7 +607,8 @@ const renderers = {
     </div>
 
     <div class="tab-panel" id="tab-generateQr" style="display:none;">
-      <div class="card" style="max-width:480px;">
+      <div class="qr-layout">
+      <div class="card" style="width:100%; max-width:480px;">
         <div class="card-title sec-title"><span class="sec-badge tone-teal"><svg class="" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v3M14 20h3M20 20h1"/></svg></span><span>Generate a QR code for a sub place</span></div>
         <div class="field">
           <label>Main place</label>
@@ -551,10 +621,11 @@ const renderers = {
         <div class="error-text" id="qrGenerateError"></div>
       </div>
 
-      <div class="card" id="qrPreviewCard" style="max-width:420px; display:none; text-align:center;">
+      <div class="card" id="qrPreviewCard" style="width:100%; max-width:420px; display:none; text-align:center;">
         <div class="card-title sec-title" style="text-align:left;"><span class="sec-badge tone-teal"><svg class="" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></span><span>Preview</span></div>
         <div id="qrPreviewWrap" style="display:flex; flex-direction:column; align-items:center; gap:10px;"></div>
         <button class="btn btn-primary" id="downloadQrPdfBtn" type="button" style="width:auto; padding:10px 22px; margin-top:18px;" disabled><svg class="btn-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5"/><path d="M4 20h16"/></svg><span>Download as PDF</span></button>
+      </div>
       </div>
     </div>
   `,
@@ -1345,7 +1416,7 @@ function attachHandlers(section) {
           guardEmpId: user.roll_no,
           guardName: user.first_name,
         });
-        alert('Image uploaded successfully.');
+        await appAlert({ title: 'Image uploaded', message: 'Your image was uploaded successfully.', kind: 'success' });
         resetSelection();
         commentInput.value = '';
         updateCommentCount();
@@ -1823,21 +1894,27 @@ function attachHandlers(section) {
         // we just created - if it fails, the account still exists, it's
         // just left without a photo for now (the admin can add one later by
         // clicking that guard's photo in the Security Information tab).
+        let photoWarning = '';
         if (newGuardPicFile) {
           try {
             const { profile_pic } = await uploadProfilePicViaApi(saved.roll_no, newGuardPicFile);
             saved.profile_pic = profile_pic;
           } catch (picErr) {
-            errBox.textContent = `Account created, but the photo could not be uploaded: ${picErr.message}`;
+            photoWarning = `The photo could not be uploaded: ${picErr.message}`;
           }
         }
 
         errBox.textContent = '';
         const okBox = document.getElementById('addGuardSuccess');
-        if (okBox) okBox.textContent = `Account created for ${saved.first_name} (${saved.roll_no}).`;
+        if (okBox) okBox.textContent = '';
         e.target.reset();
         showAddGuardErrors({});
         resetNewGuardPic();
+        await appAlert({
+          title: 'Account created',
+          message: `Account created for ${saved.first_name} (${saved.roll_no}).` + (photoWarning ? `\n${photoWarning}` : ''),
+          kind: photoWarning ? 'warning' : 'success',
+        });
       } catch (err) {
         errBox.textContent = err.message;
       } finally {
@@ -1999,25 +2076,44 @@ function attachHandlers(section) {
       document.querySelectorAll('#tab-securityInfo .block-btn, #tab-securityInfo .unblock-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
           const u = currentRows.find(r => r._id === btn.dataset.id);
-          const verb = u && u.blocked ? 'unblock' : 'block';
-          if (!confirm(`Are you sure you want to ${verb} ${u ? u.first_name : 'this account'}?`)) return;
+          const unblocking = !!(u && u.blocked);
+          const who = `<b>${escapeHtml(u ? u.first_name : 'this account')}</b>${u ? ` (${escapeHtml(u.roll_no)})` : ''}`;
+          const ok = await themedDutyConfirm({
+            theme: unblocking ? 'success' : 'danger',
+            iconKind: unblocking ? 'unblock' : 'block',
+            title: unblocking ? 'Unblock account?' : 'Block account?',
+            html: unblocking
+              ? `Are you sure you want to unblock ${who}?`
+              : `Are you sure you want to block ${who}?<br>You can unblock this account again later.`,
+            yesLabel: unblocking ? 'Yes, Unblock' : 'Yes, Block',
+            yesIcon: unblocking ? 'unblock' : 'block',
+          });
+          if (!ok) return;
           try {
             await toggleBlockUserViaApi(btn.dataset.id);
             load();
           } catch (err) {
-            alert(err.message);
+            await appAlert({ title: unblocking ? 'Could not unblock' : 'Could not block', message: err.message, kind: 'error' });
           }
         });
       });
       document.querySelectorAll('#tab-securityInfo .delete-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
           const u = currentRows.find(r => r._id === btn.dataset.id);
-          if (!confirm(`Delete ${u ? u.first_name : 'this account'} (${u ? u.roll_no : ''})? This cannot be undone.`)) return;
+          const ok = await themedDutyConfirm({
+            theme: 'danger',
+            iconKind: 'trash',
+            title: 'Delete account?',
+            html: `<b>${escapeHtml(u ? u.first_name : 'this account')}</b>${u ? ` (${escapeHtml(u.roll_no)})` : ''} will be deleted.<br>This cannot be undone.`,
+            yesLabel: 'Yes, Delete',
+            yesIcon: 'trash',
+          });
+          if (!ok) return;
           try {
             await deleteUserViaApi(btn.dataset.id);
             load();
           } catch (err) {
-            alert(err.message);
+            await appAlert({ title: 'Could not delete', message: err.message, kind: 'error' });
           }
         });
       });
@@ -2117,36 +2213,46 @@ function attachHandlers(section) {
       const u = currentRows.find(r => r._id === id);
       if (!u) return;
       openModal(`
-        <h3>Edit account — ${escapeHtml(u.roll_no)}</h3>
+        <h3 style="display:flex; align-items:center; gap:10px;"><svg class="btn-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--amber);"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg><span>Edit account — ${escapeHtml(u.roll_no)}</span></h3>
         <form id="editUserForm">
-          <div class="field"><label>Full name</label><input required name="first_name" value="${escapeHtml(u.first_name)}" /></div>
+          <div class="field"><label>Full name</label><div class="input-icon"><svg class="field-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 016-6h4a6 6 0 016 6v1"/></svg><input required name="first_name" value="${escapeHtml(u.first_name)}" /></div></div>
           <div class="field">
             <label>Gender</label>
-            <select name="gender">
+            <div class="input-icon has-select"><svg class="field-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="9" r="4"/><path d="M9 13v8M6 18h6"/><path d="M15 4h5v5M20 4l-5 5"/></svg><select name="gender">
               <option value="" ${!u.gender ? 'selected' : ''}>Not set</option>
               <option value="Male" ${u.gender === 'Male' ? 'selected' : ''}>Male</option>
               <option value="Female" ${u.gender === 'Female' ? 'selected' : ''}>Female</option>
               <option value="Other" ${u.gender === 'Other' ? 'selected' : ''}>Other</option>
-            </select>
+            </select></div>
           </div>
-          <div class="field"><label>Designation</label><input name="designation" value="${escapeHtml(u.designation)}" /></div>
-          <div class="field"><label>Mobile</label><input required name="mobile" type="tel" inputmode="numeric" maxlength="10" value="${escapeHtml(u.mobile)}" /></div>
+          <div class="field"><label>Designation</label><div class="input-icon"><svg class="field-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M3 13h18"/></svg><input name="designation" value="${escapeHtml(u.designation)}" /></div></div>
+          <div class="field"><label>Mobile</label><div class="input-icon"><svg class="field-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg><input required name="mobile" type="tel" inputmode="numeric" maxlength="10" value="${escapeHtml(u.mobile)}" /></div></div>
           <div class="field">
             <label>Role</label>
-            <select name="role">
+            <div class="input-icon has-select"><svg class="field-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6l7-3z"/></svg><select name="role">
               <option value="security" ${u.role === 'security' ? 'selected' : ''}>Security Guard</option>
               <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Admin</option>
-            </select>
+            </select></div>
           </div>
-          <div class="field"><label>New password (leave blank to keep current)</label><input type="text" name="password" /></div>
+          <div class="field"><label>New password (leave blank to keep current)</label><div class="input-icon"><svg class="field-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg><input type="password" name="password" maxlength="64" placeholder="Leave blank to keep current" autocomplete="new-password" /><button type="button" class="pw-toggle" id="editPwToggle" aria-label="Show password" title="Show password"><span class="eye-on"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></span><span class="eye-off" style="display:none"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.7 10.7 0 0112 5c6.4 0 10 7 10 7a17.6 17.6 0 01-3.2 4.2M6.6 6.6A17.4 17.4 0 002 12s3.6 7 10 7c1.8 0 3.4-.5 4.8-1.2"/><path d="M9.9 9.9a3 3 0 004.2 4.2"/></svg></span></button></div></div>
           <div class="error-text" id="editUserError"></div>
           <div class="modal-actions">
-            <button type="button" class="btn btn-outline" id="cancelEditBtn">Cancel</button>
-            <button type="submit" class="btn btn-primary" style="width:auto; padding:10px 20px;">Save Changes</button>
+            <button type="button" class="btn btn-outline" id="cancelEditBtn" style="display:inline-flex; align-items:center; gap:8px;"><svg class="btn-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg><span>Cancel</span></button>
+            <button type="submit" class="btn btn-primary" style="width:auto; padding:10px 20px; display:inline-flex; align-items:center; gap:8px;"><svg class="btn-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>Save Changes</span></button>
           </div>
         </form>
       `);
       document.getElementById('cancelEditBtn').addEventListener('click', closeModal);
+      const editPwToggle = document.getElementById('editPwToggle');
+      editPwToggle.addEventListener('click', () => {
+        const pwInput = document.querySelector('#editUserForm input[name="password"]');
+        const show = pwInput.type === 'password';
+        pwInput.type = show ? 'text' : 'password';
+        editPwToggle.querySelector('.eye-on').style.display = show ? 'none' : '';
+        editPwToggle.querySelector('.eye-off').style.display = show ? '' : 'none';
+        editPwToggle.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+        editPwToggle.title = show ? 'Hide password' : 'Show password';
+      });
       document.getElementById('editUserForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const f = new FormData(e.target);
@@ -2319,7 +2425,7 @@ function attachHandlers(section) {
         document.getElementById('mainPlaceInput').value = '';
         pending.length = 0;
         renderPending();
-        alert('Duty place saved.');
+        await appAlert({ title: 'Duty place saved', message: `Duty place "${main}" was saved successfully.`, kind: 'success' });
       } catch (err) {
         errBox.textContent = err.message;
       } finally {
@@ -2386,10 +2492,11 @@ function attachHandlers(section) {
       const btn = document.getElementById('saveSubPlacesBtn');
       btn.disabled = true;
       try {
+        const addedCount = pendingNew.length;
         await addSubPlacesViaApi(id, pendingNew.slice());
         pendingNew.length = 0;
         renderPendingNew();
-        alert('Sub places added.');
+        await appAlert({ title: 'Sub places added', message: `${addedCount} sub place${addedCount === 1 ? ' was' : 's were'} added successfully.`, kind: 'success' });
         await loadMainPlaceOptions();
         document.getElementById('subPlacesMainSelect').value = id;
         document.getElementById('subPlacesMainSelect').dispatchEvent(new Event('change'));
@@ -2461,12 +2568,20 @@ function attachHandlers(section) {
       document.querySelectorAll('.delete-place-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
           const p = currentPlaces.find(r => r._id === btn.dataset.id);
-          if (!confirm(`Delete "${p ? p.mainPlace : 'this place'}" and all its sub places? This cannot be undone.`)) return;
+          const okDel = await themedDutyConfirm({
+            theme: 'danger',
+            iconKind: 'trash',
+            title: 'Delete place?',
+            html: `<b>${escapeHtml(p ? p.mainPlace : 'this place')}</b> and all its sub places will be deleted.<br>This cannot be undone.`,
+            yesLabel: 'Yes, Delete',
+            yesIcon: 'trash',
+          });
+          if (!okDel) return;
           try {
             await deleteDutyPlaceViaApi(btn.dataset.id);
             loadExistingPlaces();
           } catch (err) {
-            alert(err.message);
+            await appAlert({ title: 'Could not delete', message: err.message, kind: 'error' });
           }
         });
       });
@@ -2826,7 +2941,7 @@ function attachHandlers(section) {
           const saved = await saveScanTimeViaApi(from, to, card.type);
           const w = card.pick(saved);
           showCurrentWindow(card, w.from, w.to);
-          alert(`Saved ${card.label}.`);
+          await appAlert({ title: 'Scan time saved', message: `Saved ${card.label}.`, kind: 'success' });
         } catch (err) {
           errBox.textContent = err.message || `Could not save the ${card.label}.`;
         } finally {
@@ -3040,7 +3155,7 @@ function attachHandlers(section) {
         existingDutiesAllTypes = res.data;
       } catch (err) {
         existingDutiesAllTypes = [];
-        alert(`Could not check existing duties for that date: ${err.message}`);
+        dutyAlert(`Could not check existing duties for that date: ${err.message}`);
       }
       applyDutyTypeFilter();
       renderDropZone();
@@ -3053,10 +3168,20 @@ function attachHandlers(section) {
       loadExistingDutiesForDate(e.target.value);
     });
     let lastDutyType = '';
-    document.getElementById('assignDutyType').addEventListener('change', (e) => {
-      if (pendingDuties.length > 0 && !confirm('Changing the duty type will clear the duty cards you have not submitted yet. Continue?')) {
-        e.target.value = lastDutyType;
-        return;
+    document.getElementById('assignDutyType').addEventListener('change', async (e) => {
+      if (pendingDuties.length > 0) {
+        const n = pendingDuties.length;
+        const ok = await themedDutyConfirm({
+          type: e.target.value,
+          title: 'Change duty type?',
+          html: `Changing the duty type will clear the <b>${n}</b> duty card${n === 1 ? '' : 's'} you have not submitted yet.<br>Continue?`,
+          yesLabel: 'Yes, Continue',
+          yesIcon: 'check',
+        });
+        if (!ok) {
+          e.target.value = lastDutyType;
+          return;
+        }
       }
       lastDutyType = e.target.value;
       pendingDuties = [];
@@ -3080,12 +3205,12 @@ function attachHandlers(section) {
       if (!guard || !target) return;
       const alreadyOn = pendingDuties.find(d => d.guardId === guardId);
       if (alreadyOn && alreadyOn.clientId !== clientId) {
-        alert(`${guard.first_name} already has a duty in this batch. A duty is unique per guard - remove that card first, or drop a different guard.`);
+        dutyAlert(`${guard.first_name} already has a duty in this batch. A duty is unique per guard - remove that card first, or drop a different guard.`);
         return;
       }
       const alreadyExisting = existingDutiesForDate.find(d => d.guardEmpId === guard.roll_no);
       if (alreadyExisting) {
-        alert(`${guard.first_name} already has a duty assigned for this date.`);
+        dutyAlert(`${guard.first_name} already has a duty assigned for this date.`);
         return;
       }
       target.guardId = guard._id;
@@ -3098,7 +3223,7 @@ function attachHandlers(section) {
     function assignGuardToFirstEmpty(guardId) {
       const target = pendingDuties.find(d => !d.guardEmpId);
       if (!target) {
-        alert('Drag a main place into the Duty Assignments column first, then drop a guard onto its card.');
+        dutyAlert('Drag a main place into the Duty Assignments column first, then drop a guard onto its card.');
         return;
       }
       assignGuardToClientId(guardId, target.clientId);
@@ -3110,11 +3235,11 @@ function attachHandlers(section) {
 
     // Adds a main place to the batch as a new duty card (used by drag-drop AND click).
     function addPlaceToBatch(placeId) {
-      if (!currentDutyType()) { alert('Select a duty type first.'); return; }
+      if (!currentDutyType()) { dutyAlert('Select a duty type first.'); return; }
       const place = placesData.find(p => p._id === placeId);
       if (!place) return;
       if (usedMainPlaceKeys().has(place.mainPlace.toLowerCase())) {
-        alert(`${place.mainPlace} already has a duty for this date.`);
+        dutyAlert(`${place.mainPlace} already has a duty for this date.`);
         return;
       }
       const clientId = 'd' + (++clientIdCounter);
@@ -3143,7 +3268,7 @@ function attachHandlers(section) {
     guardsList.addEventListener('click', (e) => {
       const item = e.target.closest('.assign-item[data-guard-id]');
       if (!item || item.classList.contains('used')) return;
-      if (!currentDutyType()) { alert('Select a duty type first.'); return; }
+      if (!currentDutyType()) { dutyAlert('Select a duty type first.'); return; }
       assignGuardToFirstEmpty(item.dataset.guardId);
     });
 
@@ -3176,7 +3301,7 @@ function attachHandlers(section) {
       dropZone.classList.remove('drag-over');
       dropZone.querySelectorAll('.mini-guard-slot.drag-over').forEach(s => s.classList.remove('drag-over'));
 
-      if (!currentDutyType()) { alert('Select a duty type first.'); return; }
+      if (!currentDutyType()) { dutyAlert('Select a duty type first.'); return; }
       let payload;
       try { payload = JSON.parse(e.dataTransfer.getData('text/plain')); } catch (err) { return; }
 
@@ -3209,22 +3334,22 @@ function attachHandlers(section) {
       const dutyDate = document.getElementById('assignDutyDate').value;
 
       const dutyType = currentDutyType();
-      if (!dutyType) { alert('Select a duty type first.'); return; }
-      if (!dutyDate) { alert('Pick a duty date first.'); return; }
-      if (dutyDate < todayISODate()) { alert('Duty date cannot be in the past. Please choose today or a later date.'); return; }
+      if (!dutyType) { dutyAlert('Select a duty type first.'); return; }
+      if (!dutyDate) { dutyAlert('Pick a duty date first.'); return; }
+      if (dutyDate < todayISODate()) { dutyAlert('Duty date cannot be in the past. Please choose today or a later date.'); return; }
       // Nothing to show at all - no new duties dragged in AND nothing already
       // assigned for this date either. If some are already assigned, still
       // let Preview open so those can be reviewed even with 0 new ones.
       if (pendingDuties.length === 0 && existingDutiesForDate.length === 0) {
-        alert('Drag at least one main place (and a guard) into the Duty Assignments column first.');
+        dutyAlert('Drag at least one main place (and a guard) into the Duty Assignments column first.');
         return;
       }
       const incomplete = pendingDuties.filter(d => !d.guardEmpId);
-      if (incomplete.length > 0) { alert(`${incomplete.length} duty card(s) still need a guard dropped onto them before you can preview.`); return; }
+      if (incomplete.length > 0) { dutyAlert(`${incomplete.length} duty card(s) still need a guard dropped onto them before you can preview.`); return; }
 
       openModal(`
-        <div>
-          <div class="card-title" style="margin-bottom:10px;">Preview — ${pendingDuties.length} new ${dutyType} assignment(s) for ${dutyRangeText(dutyDate, dutyType)}${existingDutiesForDate.length ? ` (${existingDutiesForDate.length} already assigned)` : ''}</div>
+        <div class="assign-preview ${dutyType === 'Day Duty' ? 'is-day' : 'is-night'}">
+          <div class="card-title assign-preview-title" style="margin-bottom:10px;"><svg class="btn-ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${dutyType === 'Day Duty' ? '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>' : '<path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/>'}</svg><span>Preview — ${pendingDuties.length} new ${dutyType} assignment(s) for ${dutyRangeText(dutyDate, dutyType)}${existingDutiesForDate.length ? ` (${existingDutiesForDate.length} already assigned)` : ''}</span></div>
           <div class="table-scroll">
             <table>
               <thead><tr><th>#</th><th>Guard</th><th>Main Place</th><th>Sub Places</th><th>Status</th></tr></thead>
@@ -3293,9 +3418,9 @@ function attachHandlers(section) {
           });
           if (res.skippedCount > 0) {
             const reasons = res.results.filter(r => r.status === 'skipped').map(r => `${r.guardName || 'Row'}: ${r.reason}`).join('\n');
-            alert(`${res.insertedCount} duty assignment(s) saved.\n${res.skippedCount} skipped:\n${reasons}`);
+            await dutyAlert(`${res.insertedCount} duty assignment(s) saved.\n${res.skippedCount} skipped:\n${reasons}`);
           } else {
-            alert(`${res.insertedCount} duty assignment(s) saved.`);
+            await dutyAlert(`${res.insertedCount} duty assignment(s) saved.`);
           }
           pendingDuties = [];
           closeModal();
@@ -3386,6 +3511,16 @@ function attachHandlers(section) {
         });
     }
 
+    function confirmRemoveDuty(a) {
+      return themedDutyConfirm({
+        type: (a && a.dutyType) || 'Night Duty',
+        title: 'Remove duty?',
+        html: `<b>${escapeHtml(a ? a.guardName : 'this guard')}</b> at <b>${escapeHtml(a ? a.mainPlace : 'this place')}</b><br>This cannot be undone.`,
+        yesLabel: 'Yes, Remove',
+        yesIcon: 'trash',
+      });
+    }
+
     function wireAssignedRowActions() {
       document.querySelectorAll('#tab-showAssigned .edit-btn:not([disabled])').forEach(btn => {
         btn.addEventListener('click', () => openEditAssignmentModal(btn.dataset.id));
@@ -3393,12 +3528,12 @@ function attachHandlers(section) {
       document.querySelectorAll('#tab-showAssigned .delete-btn:not([disabled])').forEach(btn => {
         btn.addEventListener('click', async () => {
           const a = currentAssignments.find(r => r._id === btn.dataset.id);
-          if (!confirm(`Remove ${a ? a.guardName : 'this guard'}'s duty at "${a ? a.mainPlace : 'this place'}"? This cannot be undone.`)) return;
+          if (!(await confirmRemoveDuty(a))) return;
           try {
             await deleteDutyAssignmentViaApi(btn.dataset.id);
             loadAssignedDuties();
           } catch (err) {
-            alert(err.message);
+            await appAlert({ title: 'Could not remove duty', message: err.message, kind: 'error' });
           }
         });
       });
