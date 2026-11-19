@@ -1854,16 +1854,10 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
   --duty-soft: #e8ebfa; --on-accent: #ffffff;
 }
 
-/* Duty type picker (the circled box): tinted card, accent border and text */
-#tab-assignDuty[data-duty] .duty-type-card {
-  background: var(--duty-soft);
-  border-color: var(--amber);
-}
+/* Duty type picker (the circled box): accent text only - no coloured border or tinted background */
 #tab-assignDuty[data-duty] #assignDutyType {
-  border-color: var(--amber);
   color: var(--amber);
   font-weight: 700;
-  background-color: var(--duty-soft);
 }
 #tab-assignDuty[data-duty] #assignDutyRangeNote { color: var(--ink-300); }
 #tab-assignDuty[data-duty] #assignDutyRangeNote b { color: var(--amber); }
@@ -1912,11 +1906,9 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
   --duty-soft: #e8ebfa; --on-accent: #ffffff;
 }
 
-/* Duty type dropdown (circled): accent border, tinted background, accent text */
+/* Duty type dropdown (circled): accent text only - no coloured border or tinted background */
 #tab-showAssigned[data-duty] #assignedDutyTypeFilter {
-  border-color: var(--amber);
   color: var(--amber);
-  background-color: var(--duty-soft);
   font-weight: 700;
 }
 /* Table: accent header line, duty type text, date badge, soft row hover */
@@ -2214,3 +2206,18 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
 /* Generate QR Code: the Preview card sits beside the form card (wraps under it on narrow screens) */
 .qr-layout { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px; }
 .qr-layout > .card { margin-bottom: 0; flex: 1 1 340px; }
+
+/* Assign Duty > Duty date: hide the browser's calendar icon on the right.
+   The (invisible) picker button is stretched over the whole field, so clicking
+   anywhere in it still opens the calendar. */
+#assignDutyDate::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+}

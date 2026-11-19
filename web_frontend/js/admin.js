@@ -648,8 +648,8 @@ const renderers = {
           <div class="field" style="margin-bottom:0;">
             <label>Duty type</label>
             <div class="input-icon has-select"><span class="field-icon" id="assignDutyTypeIco" style="display:flex;"><svg class="" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9zM9 14l2 2 4-4"/></svg></span><select id="assignDutyType">
-              <option value="" selected disabled>Select duty type</option>
-              <option value="Day Duty">Day Duty</option>
+              <option value="" disabled>Select duty type</option>
+              <option value="Day Duty" selected>Day Duty</option>
               <option value="Night Duty">Night Duty</option>
             </select></div>
           </div>
@@ -691,8 +691,8 @@ const renderers = {
           </div>
           <div class="toolbar-right">
             <div class="input-icon has-select toolbar-select"><span class="field-icon" id="assignedDutyTypeIco" style="display:flex;"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9zM9 14l2 2 4-4"/></svg></span><select id="assignedDutyTypeFilter" title="Filter by duty type">
-              <option value="" selected disabled>Select duty type</option>
-              <option value="Day Duty">Day Duty</option>
+              <option value="" disabled>Select duty type</option>
+              <option value="Day Duty" selected>Day Duty</option>
               <option value="Night Duty">Night Duty</option>
             </select></div>
             <input type="date" id="assignedDateFilter" title="Filter by duty date" value="${todayISODate()}" />
@@ -3168,7 +3168,7 @@ function attachHandlers(section) {
       refreshDutyTypeUi();
       loadExistingDutiesForDate(e.target.value);
     });
-    let lastDutyType = '';
+    let lastDutyType = document.getElementById('assignDutyType').value; // 'Day Duty' by default
     document.getElementById('assignDutyType').addEventListener('change', async (e) => {
       if (pendingDuties.length > 0) {
         const n = pendingDuties.length;
@@ -3445,7 +3445,7 @@ function attachHandlers(section) {
     // ======================================================================
     // Tab 2: Show Assigned Duties (list + edit + delete)
     // ======================================================================
-    const assignedState = { search: '', date: todayISODate(), dutyType: '', page: 1, limit: 10 };
+    const assignedState = { search: '', date: todayISODate(), dutyType: 'Day Duty', page: 1, limit: 10 }; // Day Duty is the default filter
     let currentAssignments = [];
 
     function renderAssignedTable(res) {
@@ -3644,9 +3644,8 @@ function attachHandlers(section) {
       assignedState.page = 1;
       loadAssignedDuties();
     });
-    document.getElementById('assignedDutyTypeFilter').addEventListener('change', (e) => {
-      assignedState.dutyType = e.target.value;
-      assignedState.page = 1;
+    // Icon, panel colour and PDF-button state for the chosen duty type (Day = amber, Night = indigo).
+    function applyAssignedDutyTypeUi() {
       // Colour this tab by duty type: Day = amber, Night = indigo.
       const assignedIco = document.getElementById('assignedDutyTypeIco');
       if (assignedIco) assignedIco.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">@@</svg>'.replace('@@', assignedState.dutyType === 'Night Duty' ? '<path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/>' : assignedState.dutyType === 'Day Duty' ? '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>' : '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9zM9 14l2 2 4-4"/>');
@@ -3656,8 +3655,14 @@ function attachHandlers(section) {
       const pdfBtn = document.getElementById('downloadAssignedPdfBtn');
       pdfBtn.disabled = !assignedState.dutyType;
       pdfBtn.title = assignedState.dutyType ? 'Download the listed duties as PDF' : 'Select a duty type to download';
+    }
+    document.getElementById('assignedDutyTypeFilter').addEventListener('change', (e) => {
+      assignedState.dutyType = e.target.value;
+      assignedState.page = 1;
+      applyAssignedDutyTypeUi();
       loadAssignedDuties();
     });
+    applyAssignedDutyTypeUi(); // Day Duty is pre-selected, so style the tab for it from the start
     document.getElementById('assignedPrevBtn').addEventListener('click', () => { if (assignedState.page > 1) { assignedState.page -= 1; loadAssignedDuties(); } });
     document.getElementById('assignedNextBtn').addEventListener('click', () => { assignedState.page += 1; loadAssignedDuties(); });
 
