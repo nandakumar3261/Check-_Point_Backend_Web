@@ -27,9 +27,18 @@ function loadImageAsync(src) {
 // undefined (reading 'length')" instead of picking a size. So instead we
 // try increasing type numbers ourselves until one is large enough to hold
 // the text at error-correction level H, which is the standard workaround.
+//
+// We also start at type 6 (41x41 modules) rather than 1. A short place name
+// would otherwise produce a tiny 25-33 module code, and the large centered
+// logo would wipe out too big a share of it to scan reliably. A denser code
+// keeps the same visual logo size while covering a smaller fraction of the
+// data, so it still scans (tested down to 25% scale). Longer names simply
+// move up to a larger type automatically.
+const QR_MIN_TYPE = 6;
+
 function makeQrCode(text) {
   let lastErr;
-  for (let type = 1; type <= 40; type++) {
+  for (let type = QR_MIN_TYPE; type <= 40; type++) {
     try {
       const qr = qrcode(type, 'H');
       qr.addData(text);
@@ -50,13 +59,13 @@ function makeQrCode(text) {
  *   pixels - drives how crisp the QR (and the embedded logo) look once
  *   scaled into the on-screen preview or a printed PDF. Higher = sharper.
  * @param {number} [opts.marginCells=4] Quiet-zone width, in modules.
- * @param {number} [opts.logoRatio=0.22] Logo width as a fraction of the whole QR.
+ * @param {number} [opts.logoRatio=0.32] Logo width as a fraction of the whole QR.
  * @returns {HTMLCanvasElement}
  */
 function generateQrCanvas(text, logoImg, opts = {}) {
   const targetSize = opts.targetSize || 1000;
   const marginCells = opts.marginCells != null ? opts.marginCells : 4;
-  const logoRatio = opts.logoRatio || 0.22;
+  const logoRatio = opts.logoRatio || 0.32;
 
   const qr = makeQrCode(text);
   const moduleCount = qr.getModuleCount();
@@ -78,29 +87,31 @@ function generateQrCanvas(text, logoImg, opts = {}) {
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, size, size);
 
+  // Size of the logo, and the clear zone behind it. Dark modules whose
+  // centre falls inside the clear zone are simply not drawn, which leaves
+  // a clean blocky circle (whole modules removed, no half-covered cells)
+  // around the logo - the look of the reference design, and also easier on
+  // scanners than a smooth backdrop slicing through modules.
+  const logoSize = logoImg ? size * logoRatio : 0;
+  const clearR = logoImg ? logoSize / 2 + cellSize * 1.4 : 0;
+  const cx = size / 2;
+  const cy = size / 2;
+
   ctx.fillStyle = '#000000';
   for (let row = 0; row < moduleCount; row++) {
     for (let col = 0; col < moduleCount; col++) {
-      if (qr.isDark(row, col)) {
-        ctx.fillRect(margin + col * cellSize, margin + row * cellSize, cellSize, cellSize);
-      }
+      if (!qr.isDark(row, col)) continue;
+      const mx = margin + col * cellSize + cellSize / 2;
+      const my = margin + row * cellSize + cellSize / 2;
+      if (logoImg && Math.hypot(mx - cx, my - cy) < clearR) continue;
+      ctx.fillRect(margin + col * cellSize, margin + row * cellSize, cellSize, cellSize);
     }
   }
 
   if (logoImg) {
-    const logoSize = size * logoRatio;
-    const cx = size / 2;
-    const cy = size / 2;
-    const backdropR = logoSize / 2 + cellSize * 0.6;
-
-    ctx.beginPath();
-    ctx.arc(cx, cy, backdropR, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffffff';
-    ctx.fill();
-
     // High-quality downscaling for the logo specifically (the 1000+ px
-    // source logo image is being shrunk into a small circle - without
-    // this the browser can default to a cheap/blurry resize).
+    // source logo image is being shrunk - without this the browser can
+    // default to a cheap/blurry resize).
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(logoImg, cx - logoSize / 2, cy - logoSize / 2, logoSize, logoSize);
@@ -110,16 +121,20 @@ function generateQrCanvas(text, logoImg, opts = {}) {
 }
 
 /**
- * Builds a one-page PDF matching the printed-QR-card look: a rounded black
- * frame around the QR, with the place name printed underneath.
+ * Builds a one-page PDF matching the printed-QR-card look: a report-style
+ * header (logo, title, coloured "Check Point", rule) at the top, then a
+ * rounded black frame around the QR with the place name printed underneath.
+ * The QR block is centered horizontally and vertically in the space below
+ * the header.
  *
  * @param {Object} opts
  * @param {string} opts.dataUrl   PNG data URL from generateQrCanvas(...).toDataURL('image/png')
  * @param {string} opts.caption   Text printed below the QR (the sub place name).
  * @param {string} [opts.subCaption] Optional smaller line printed above the caption (the main place name).
+ * @param {string} [opts.title]   Header title (default "Duty Place QR Code").
  * @param {string} opts.filename
  */
-function exportQrCodeToPdf({ dataUrl, caption, subCaption, filename }) {
+async function exportQrCodeToPdf({ dataUrl, caption, subCaption, title = 'Duty Place QR Code', filename }) {
   if (typeof jspdf === 'undefined' || !jspdf.jsPDF) {
     alert('The PDF export library did not load. Check your internet connection and try again.');
     return;
@@ -127,24 +142,65 @@ function exportQrCodeToPdf({ dataUrl, caption, subCaption, filename }) {
 
   const doc = new jspdf.jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
 
+  // ---------- Header ----------
+  const marginX = 40;
+  const headerRuleY = 76;
+
+  let logo = null;
+  if (typeof loadPdfLogoDataUrl === 'function') logo = await loadPdfLogoDataUrl();
+  if (logo) {
+    const logoH = 30;
+    doc.addImage(logo, 'PNG', marginX, 26, logoH * (900 / 117), logoH);
+  }
+
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(18, 33, 58);
+  doc.setFontSize(18);
+  doc.text(title, pageWidth - marginX, 42, { align: 'right' });
+
+  // "Check Point" in the logo's two colours (orange + blue), right-aligned.
+  doc.setFontSize(14);
+  const cpX = pageWidth - marginX - doc.getTextWidth('Check Point');
+  doc.setTextColor(244, 112, 37);
+  doc.text('Check', cpX, 62);
+  doc.setTextColor(3, 81, 155);
+  doc.text('Point', cpX + doc.getTextWidth('Check '), 62);
+
+  doc.setDrawColor(18, 33, 58);
+  doc.setLineWidth(1.2);
+  doc.line(marginX, headerRuleY, pageWidth - marginX, headerRuleY);
+
+  // ---------- QR block, centered in the area below the header ----------
   const qrSize = 260;
-  const qrX = (pageWidth - qrSize) / 2;
-  const qrY = 130;
   const framePad = 24;
   const frameR = 20;
+  const frameSize = qrSize + framePad * 2;
+  const captionGap = 44;          // frame bottom -> first text baseline
+  const subCaptionStep = subCaption ? 26 : 0;
+  const blockH = frameSize + captionGap + subCaptionStep;
+
+  const areaTop = headerRuleY;
+  const areaH = pageHeight - areaTop;
+  // Center the QR frame itself in the area below the header, so the gap
+  // between the header and the QR is balanced; the place names hang below it.
+  const frameY = areaTop + (areaH - frameSize) / 2;
+  const frameX = (pageWidth - frameSize) / 2;
+  const qrX = frameX + framePad;
+  const qrY = frameY + framePad;
 
   doc.setDrawColor(15, 15, 15);
   doc.setLineWidth(7);
-  doc.roundedRect(qrX - framePad, qrY - framePad, qrSize + framePad * 2, qrSize + framePad * 2, frameR, frameR, 'S');
+  doc.roundedRect(frameX, frameY, frameSize, frameSize, frameR, frameR, 'S');
 
   doc.addImage(dataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
 
-  let textY = qrY + qrSize + framePad + 44;
+  let textY = frameY + frameSize + captionGap;
   if (subCaption) {
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(13);
-    doc.setTextColor(110, 110, 110);
+    doc.setFontSize(15);
+    doc.setTextColor(80, 80, 80);
     doc.text(subCaption, pageWidth / 2, textY, { align: 'center' });
     textY += 26;
   }

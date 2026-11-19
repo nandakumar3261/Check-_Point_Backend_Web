@@ -2739,7 +2739,7 @@ function attachHandlers(section) {
     // ---------- Tab 4: Generate QR Code ----------
     let qrPlaceOptions = [];
     let currentQrDataUrl = null;
-    let currentQrCaption = { subPlace: '' };
+    let currentQrCaption = { mainPlace: '', subPlace: '' };
 
     function resetQrPreview() {
       document.getElementById('qrPreviewCard').style.display = 'none';
@@ -2815,7 +2815,7 @@ function attachHandlers(section) {
         const dataUrl = canvas.toDataURL('image/png');
 
         currentQrDataUrl = dataUrl;
-        currentQrCaption = { subPlace: subPlace.name };
+        currentQrCaption = { mainPlace: place.mainPlace, subPlace: subPlace.name };
 
         previewWrap.innerHTML = `
           <div class="qr-frame"><img src="${dataUrl}" alt="QR code" style="display:block; width:220px; height:220px;" /></div>
@@ -2834,6 +2834,7 @@ function attachHandlers(section) {
       exportQrCodeToPdf({
         dataUrl: currentQrDataUrl,
         caption: currentQrCaption.subPlace,
+        subCaption: currentQrCaption.mainPlace,
         filename: `${safeName}.pdf`,
       });
     });
